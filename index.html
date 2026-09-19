@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aryan Mehta, Product, signal, systems</title>
+<meta name="description" content="Aryan Mehta. Founding PM turned interim co-CEO. I ship connected hardware and ML that caregivers can trust. Flick your cursor to meet the fall detector.">
+<meta name="theme-color" content="#06070a">
+<link rel="preload" href="fonts/bricolage-grotesque-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/site.css">
+<script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/addons/"}}</script>
+</head>
+<body>
+<canvas id="gl" aria-hidden="true"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+<div class="progress" aria-hidden="true"><i id="progress"></i></div>
+
+<header class="nav" id="nav">
+  <a class="brand" href="#top" aria-label="Aryan Mehta, back to top">Aryan Mehta</a>
+  <nav>
+    <a href="#about">About</a><a href="#work">Work</a><a href="#timeline">Timeline</a>
+    <a class="pill" href="#contact">Get in touch</a>
+  </nav>
+</header>
+
+<main>
+<section class="hero" id="top">
+
+  <div class="hero-copy" id="copyIdle">
+    <h1 class="display"><span class="line"><span>Aryan</span></span><span class="line"><span>Mehta</span></span></h1>
+    <p class="hero-sub">I turn a body's raw signal into something a caregiver can trust. Hardware, ML, and the company around them.</p>
+  </div>
+
+  <div class="hero-copy alert" id="copyAlert" role="status" aria-live="assertive">
+    <p class="eyebrow mono"><span id="alertMeta">Event 01, peak 4.8 g</span></p>
+    <h2 class="display"><span class="line"><span>Fall</span></span><span class="line"><span>detected.</span></span></h2>
+    <p class="hero-sub">That was you. The watch is calling a caregiver and sharing a location, before anyone has had to find a phone.</p>
+  </div>
+
+  <div class="hero-copy after" id="copyAfter">
+    
+    <h2 class="display small"><span class="line"><span>I built that.</span></span></h2>
+    <p class="hero-sub">The real one runs on a watch worn by people up to 97. I owned it end to end: <b>0.990 AUC</b>, <b>450× fewer false alarms</b>, and 69 model versions to get there.</p>
+    <a class="cta" href="#about">Read his story <span aria-hidden="true">↓</span></a>
+  </div>
+
+  <div class="hero-foot">
+    <div class="hint" id="hint">
+            <span id="hintText">Flick your cursor hard, like a wrist in a fall.</span>
+      <button class="ghost" id="simBtn" type="button">or press F</button>
+      <button class="ghost" id="motionBtn" type="button" hidden>Use my phone's sensor</button>
+    </div>
+    <div id="log" hidden></div>
+  </div>
+</section>
+
+<div class="sheet">
+
+<section class="manifesto" id="about">
+  <div class="wrap">
+    <p class="big" id="manifesto">I build the systems that turn a body's raw signal (accelerometer noise, a heart rate, a fall) into something a caregiver can trust and act on.</p>
+
+    <div class="about-grid">
+      <figure class="portrait reveal">
+        <img src="assets/headshot.jpg" alt="Portrait of Aryan Mehta" width="846" height="564" loading="lazy">
+        <figcaption class="mono">Boston, MA, Penn State Computer Engineering '25</figcaption>
+      </figure>
+      <div class="about-text">
+        <p class="reveal">Since November 2024 I've been the founding product manager at <b>Kiwi Senior Health</b>, a 15-person Boston startup making fall-detection and vitals wearables for senior care. I've been there since it was an idea.</p>
+        <p class="reveal">In July 2026 our CEO stepped down, and I began splitting the role 50/50 with the founder. So next to product and the ML roadmap I now run vendor negotiation, hiring, pricing, and most customer conversations.</p>
+        <p class="reveal">I still pack and test every watch that ships, and I onboard elderly users in person. That turned out to be the biggest lever on whether they kept wearing it.</p>
+        <ul class="facts reveal">
+          <li><span class="mono">Before</span>AI-privacy research at MIT, dengue forecasting at Harvard</li>
+          <li><span class="mono">Trained as</span>Computer engineer, minors in cybersecurity and economics</li>
+          <li><span class="mono">Known for</span>Owning the thing nobody has defined yet</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="numbers">
+  <div class="wrap">
+    <div class="stat-grid">
+      <div class="stat reveal"><b data-to="0.990" data-dec="3">0.990</b><span>AUC on the shipped fall-detection model</span></div>
+      <div class="stat reveal"><b data-to="450" data-suf="×">450×</b><span>fewer wrist-posture false alarms than the naive approach</span></div>
+      <div class="stat reveal"><b data-to="1000" data-suf="+" data-sep="1">1,000+</b><span>patients across 5 hospitals in a 4-month trial</span></div>
+      <div class="stat reveal"><b data-to="4">4</b><span>enterprise pilots signed within a month of launch</span></div>
+      <div class="stat reveal"><b data-to="8" data-pre="2→">2→8</b><span>engineers hired, every one interviewed by me</span></div>
+      <div class="stat reveal"><b data-to="200" data-suf="+">200+</b><span>journal invitations after the MIT paper</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="work" id="work">
+  <div class="wrap">
+    <h2 class="title reveal">Four things I can talk about for an hour, including the parts that failed first.</h2>
+
+    <article class="case reveal">
+      <div class="case-text">
+        <p class="tag mono">Kiwi Senior Health, Machine learning</p>
+        <h3>A fall detector that took 69 tries to get right</h3>
+        <p>You met it at the top of this page. The real one was trained from scratch on 81.2 hours of labeled wrist data: 368 falls from 10 people. I tried transfer learning first. The pretrained features didn't survive our hardware, so I dropped it.</p>
+        <p>The winner is a bidirectional LSTM that fuses six orientation-invariant motion signals with 33 hand-built physics features, checked on people it had never seen.</p>
+        <p class="caveat">The honest limit: every tester was a working-age adult, not the elderly people it's for. Strong on the test group, not yet proven for customers.</p>
+      </div>
+      <div class="case-panel">
+        <div class="panel-head mono"><span>Live wrist signal</span><span id="miniState">monitoring</span></div>
+        <canvas id="mini" class="mini"></canvas>
+        <div class="versus">
+          <div><span class="mono">False alarms, naive model</span><b class="dim">91.7%</b></div>
+          <div class="arrow" aria-hidden="true">→</div>
+          <div><span class="mono">What shipped</span><b class="mint">0.2%</b></div>
+        </div>
+        <div class="chips"><span>AUC 0.990</span><span>84.5% recall at 2 false alarms per hour</span><span>On-watch match within 3 ppm</span></div>
+        <a class="ghost link" href="#top" id="replay">Fall again ↑</a>
+      </div>
+    </article>
+
+    <article class="case reveal">
+      <div class="case-text">
+        <p class="tag mono">MIT, Published research</p>
+        <h3>What your AI chatbot quietly tells a third party</h3>
+        <p>I led a 10-person team that put commercial chatbots behind Wireshark and Burp Suite and counted where the traffic went. Between 9% and 36% of requests left for analytics and tracking domains.</p>
+        <p>For anyone typing health details into a chatbot, that is a HIPAA-sized gap. Co-authored with Prof. Leo Celi (MIT) and Dr. Joseph Sakran (Johns Hopkins).</p>
+        <p class="caveat">The panel is live. This page is held to the same test, and you can verify it in your browser's network tab.</p>
+      </div>
+      <div class="case-panel">
+        <div class="panel-head mono"><span>Requests sent to third parties</span><span>1,839 captured</span></div>
+        <div class="bars">
+          <div class="bar" data-w="35.9"><span>Grok</span><i></i><em>35.9%</em></div>
+          <div class="bar" data-w="14.0"><span>Claude</span><i></i><em>14.0%</em></div>
+          <div class="bar" data-w="13.7"><span>ChatGPT</span><i></i><em>13.7%</em></div>
+          <div class="bar" data-w="9.0"><span>Gemini</span><i></i><em>9.0%</em></div>
+          <div class="bar me" data-w="0"><span>This page</span><i></i><em id="tpPct">0%</em></div>
+        </div>
+        <div class="meter">
+          <div><b id="reqTotal">0</b><span class="mono">requests this page has made</span></div>
+          <div><b id="reqThird" class="mint">0</b><span class="mono">went to a third party</span></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="case reveal">
+      <div class="case-text">
+        <p class="tag mono">Lockheed Martin, Sponsored capstone</p>
+        <h3>A pendulum rig for 150 lb drones, on a $1,250 budget</h3>
+        <p>How do you measure a drone's moment of inertia without a lab? Hang it from two wires, twist it, and time the swing. I led a six-person Penn State team that built it for Lockheed Martin engineers: aluminum frame, load cells, a gyroscope, embedded C on a Teensy 4.1.</p>
+        <p>Delivered on spec with $71.89 left in the budget.</p>
+        <p class="caveat">An academic capstone with Lockheed sponsors, not Lockheed employment. A strong prototype, not a certified instrument.</p>
+      </div>
+      <div class="case-panel">
+        <div class="panel-head mono"><span>Top view, drag the drone, let go</span><span id="pendState">at rest</span></div>
+        <canvas id="pend" class="pend" aria-label="Interactive pendulum. Drag the drone to twist it, then release to measure its inertia."></canvas>
+        <div class="meter">
+          <div><b id="pT">0.00</b><span class="mono">measured period, seconds</span></div>
+          <div><b id="pI">0.00</b><span class="mono">moment of inertia, kg-m²</span></div>
+        </div>
+        <div class="seg"><button class="on" data-i="18" type="button">Light airframe</button><button data-i="42" type="button">Full payload</button></div>
+      </div>
+    </article>
+
+    <div class="trio">
+      <article class="mini-case reveal">
+        <p class="tag mono">Prognosis, Harvard</p>
+        <h3>Seeing dengue five weeks before it arrives</h3>
+        <p>Founded a forecasting platform on satellite imagery and 21+ variables. Third place and a $7,050 grant at the Nittany AI Challenge, then adopted by public-health agencies in three Indian states. At Harvard, my team cut prediction error 20% across 10 zones in Colombia.</p>
+      </article>
+      <article class="mini-case reveal">
+        <p class="tag mono">Kiwi, Clinical</p>
+        <h3>A blood-pressure trial across five hospitals</h3>
+        <p>Wrote the protocol, won hospital sign-off, and ran four months of data collection in India: 1,000+ patients, filtered to 450+ clean samples. A proof of concept at roughly 20 mmHg error, and I say so in every room.</p>
+      </article>
+      <article class="mini-case reveal">
+        <p class="tag mono">Kiwi, Voice</p>
+        <h3>An agent on a watch that does things</h3>
+        <p>Directed a wake-word and tool-use voice assistant on smartwatch-class hardware. Nine in ten testers got what they asked for on the first try. Built, tested and validated. Shelved for now, shipping later.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="timeline" id="timeline">
+  <div class="wrap">
+    <h2 class="title reveal">None of it happened one after another.</h2>
+    <p class="lede reveal">For most of 2024 I ran a startup, two research teams, a sponsored capstone and a side venture at the same time.</p>
+    <div class="tl reveal">
+      <div class="tl-scale mono"><span>Jan 2024</span><span>Jan 2025</span><span>Jan 2026</span><span>Now</span></div>
+      <div class="tl-row"><div class="tl-label"><b>MIT</b><span>AI privacy research</span></div><div class="tl-track"><i style="--l:0%;--w:48.5%"></i></div></div>
+      <div class="tl-row"><div class="tl-label"><b>Harvard</b><span>Dengue prediction</span></div><div class="tl-track"><i style="--l:15.2%;--w:33.3%"></i></div></div>
+      <div class="tl-row"><div class="tl-label"><b>Lockheed Martin</b><span>UAV capstone</span></div><div class="tl-track"><i style="--l:21.2%;--w:12.1%"></i></div></div>
+      <div class="tl-row"><div class="tl-label"><b>Prognosis</b><span>Founder and CEO</span></div><div class="tl-track"><i style="--l:33.3%;--w:24.3%"></i></div></div>
+      <div class="tl-row"><div class="tl-label"><b>Kiwi Senior Health</b><span>Founding PM, then co-CEO</span></div><div class="tl-track"><i class="live" style="--l:30.3%;--w:69.7%"></i></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="contact" id="contact">
+  <div class="wrap">
+    <h2 class="title reveal">If you build things that touch real people, write to me.</h2>
+    <a class="email reveal" href="mailto:mehtaaryan1999@gmail.com">mehtaaryan1999<wbr>@gmail.com</a>
+    <div class="links reveal">
+      <a href="https://linkedin.com/in/aryanmehta2004" target="_blank" rel="noopener">LinkedIn <span aria-hidden="true">↗</span></a>
+      <a href="assets/Aryan-Mehta-Resume.pdf" download>Resume, PDF <span aria-hidden="true">↓</span></a>
+    </div>
+    <div class="foot mono"><span>Aryan Mehta, Boston, MA</span><span id="footTally">No trackers. No cookies. 0 third-party requests.</span></div>
+  </div>
+</section>
+
+</div>
+</main>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
