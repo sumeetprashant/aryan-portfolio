@@ -1,15 +1,15 @@
 // The things he made. They live in a box at the side of the page, jump into their own chapter
-// as it arrives, and gather around him in the felt summary, where each one opens its case study.
+// as it arrives, and gather around the felt character in the summary, where each one opens its case study.
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const lerp = (a, b, t) => a + (b - a) * t;
-const BLUE = '#7b93f5', DEEP = '#2c45c9', BONE = '#ece9e2', TAU = Math.PI * 2;
+const BLUE = '#7b93f5', DEEP = '#2c45c9', BONE = '#ece9e2', BUTTER = '#f0d264', TAU = Math.PI * 2;
 
 const DEFS = [
-  { key: 'globe', name: 'The forecasts', story: 'forecast', chapter: 'forecast', w: 132, h: 132, table: { u: 0.91, v: 0.6, z: 0.45, s: 0.95 } },
-  { key: 'packets', name: 'The privacy study', story: 'privacy', chapter: 'research', w: 240, h: 96, table: { u: 0.13, v: 0.43, z: 0.6, s: 0.62 } },
-  { key: 'drone', name: 'The drone rig', story: 'capstone', chapter: 'engineering', w: 250, h: 250, table: { u: 0.1, v: 0.2, z: 0.75, s: 0.6 } },
-  { key: 'watch', name: 'The Kiwi watch', story: 'kiwi', chapter: 'kiwi', w: 128, h: 160, table: { u: 0.89, v: 0.2, z: 0.9, s: 1 } },
-  { key: 'badge', name: 'The roles he carried', story: 'path', chapter: null, w: 112, h: 140, table: { u: 0.19, v: 0.63, z: 1, s: 0.8 } },
+  // table: where it rests around him in the summary, as a fraction of the window
+  { key: 'globe', name: 'The forecasts', story: 'forecast', chapter: 'forecast', w: 132, h: 132, table: { x: 0.2, y: 0.76, z: 0.45, s: 0.95 } },
+  { key: 'packets', name: 'The privacy study', story: 'privacy', chapter: 'research', w: 240, h: 96, table: { x: 0.79, y: 0.27, z: 0.6, s: 0.7 } },
+  { key: 'drone', name: 'The drone rig', story: 'capstone', chapter: 'engineering', w: 250, h: 250, table: { x: 0.86, y: 0.55, z: 0.75, s: 0.6 } },
+  { key: 'watch', name: 'The Kiwi watch', story: 'kiwi', chapter: 'kiwi', w: 128, h: 160, table: { x: 0.74, y: 0.8, z: 0.9, s: 0.95 } },
 ];
 
 /* ---------------- the drone on its two wires, seen from above, built from voxels ---------------- */
@@ -119,7 +119,7 @@ function makeGlobe() {
       reg.spots.forEach((p, i) => {
         const [X, Y, Z] = turn(p); if (Z < 0) return;
         const pulse = 0.5 + 0.5 * Math.sin(t * 2.4 - i * 0.9);
-        x.fillStyle = `rgba(123,147,245,${(0.16 + 0.2 * pulse) * Z})`; x.beginPath(); x.arc(cx + X * R, cy - Y * R, 5 + 5 * pulse, 0, TAU); x.fill();
+        x.fillStyle = `rgba(185,210,149,${(0.2 + 0.24 * pulse) * Z})`; x.beginPath(); x.arc(cx + X * R, cy - Y * R, 5 + 5 * pulse, 0, TAU); x.fill();
         x.fillStyle = '#fff'; x.fillRect(cx + X * R - 1.5, cy - Y * R - 1.5, 3, 3);
       });
       // the orbit, and the satellite that feeds the model
@@ -133,14 +133,14 @@ function makeGlobe() {
 /* ---------------- the privacy study: where the requests go once they leave the chat ---------------- */
 function makePackets() {
   const packets = []; let clock = 0;
-  const ys = [15, 48, 81], names = ['ANALYTICS', 'TRACKING', '3RD PARTY'];
+  const ys = [15, 48, 81], names = ['analytics', 'tracking', '3rd party'];
   return {
     draw(x, W, H, now, dt, live) {
       const k = W / 240; x.save(); x.scale(k, k);
       x.font = '700 9px "Space Mono", monospace'; x.textBaseline = 'middle'; x.textAlign = 'center'; x.lineWidth = 1;
       const box = (bx, by, bw, bh, label, col) => { x.strokeStyle = col; x.strokeRect(bx + 0.5, by + 0.5, bw, bh); x.fillStyle = col; x.fillText(label, bx + bw / 2, by + bh / 2 + 1); };
-      box(4, 34, 52, 28, 'CHAT >_', 'rgba(236,233,226,.88)'); box(84, 34, 58, 28, 'AI TOOL', 'rgba(236,233,226,.88)');
-      ys.forEach((y, i) => box(174, y - 9, 62, 18, names[i], 'rgba(123,147,245,.95)'));
+      box(4, 34, 52, 28, 'chat >_', 'rgba(236,233,226,.88)'); box(84, 34, 58, 28, 'ai tool', 'rgba(236,233,226,.88)');
+      ys.forEach((y, i) => box(174, y - 9, 62, 18, names[i], BUTTER));
       x.strokeStyle = 'rgba(236,233,226,.22)'; x.setLineDash([2, 3]);
       x.beginPath(); x.moveTo(57, 48); x.lineTo(84, 48); x.stroke();
       for (const y of ys) { x.beginPath(); x.moveTo(143, 48); x.lineTo(158, 48); x.lineTo(158, y); x.lineTo(174, y); x.stroke(); }
@@ -153,45 +153,22 @@ function makePackets() {
         let px, py = 48;
         if (p.t < 1) px = lerp(57, 84, p.t);
         else { const u = (p.t - 1) / 0.65, y = ys[p.third - 1]; if (u < 0.33) px = lerp(143, 158, u / 0.33); else if (u < 0.66) { px = 158; py = lerp(48, y, (u - 0.33) / 0.33); } else { px = lerp(158, 174, (u - 0.66) / 0.34); py = y; } }
-        x.fillStyle = p.t >= 1 ? BLUE : BONE; x.fillRect(px - 1.5, py - 1.5, 3, 3);
+        x.fillStyle = p.t >= 1 ? BUTTER : BONE; x.fillRect(px - 1.5, py - 1.5, 3, 3);
       }
       x.restore();
     },
   };
 }
 
-/* ---------------- the roles he carried: a felt badge ---------------- */
-function makeBadge() {
-  let cache = null;
-  return {
-    draw(x, W, H) {
-      if (!cache) {
-        cache = document.createElement('canvas'); cache.width = W; cache.height = H;
-        const c = cache.getContext('2d'), k = W / 112; c.scale(k, k);
-        c.strokeStyle = '#3b4a86'; c.lineWidth = 5; c.beginPath(); c.moveTo(44, 22); c.lineTo(30, -4); c.moveTo(68, 22); c.lineTo(82, -4); c.stroke();
-        c.fillStyle = '#1c2750'; c.beginPath(); c.roundRect(8, 18, 96, 116, 9); c.fill();
-        for (let i = 0; i < 2600; i++) { c.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},${Math.random() * 0.09})`; c.fillRect(8 + Math.random() * 96, 18 + Math.random() * 116, 1.4, 1.4); }
-        c.fillStyle = '#0a0b0e'; c.beginPath(); c.roundRect(42, 24, 28, 6, 3); c.fill();
-        c.strokeStyle = '#d9cfb8'; c.lineWidth = 1.4; c.setLineDash([5, 4]); c.beginPath(); c.roundRect(14, 36, 84, 92, 6); c.stroke(); c.setLineDash([]);
-        c.fillStyle = '#ece9e2'; c.textAlign = 'center'; c.font = '26px "VT323", monospace'; c.fillText('ARYAN', 56, 64);
-        c.fillStyle = BLUE; c.fillRect(30, 72, 52, 2);
-        c.fillStyle = '#c4c2bd'; c.font = '15px "VT323", monospace';
-        ['FOUNDER', 'PRODUCT MANAGER', 'INTERIM CO-CEO'].forEach((r, i) => { c.font = `${i ? 13 : 15}px "VT323", monospace`; c.fillText(r, 56, 90 + i * 14); });
-      }
-      x.drawImage(cache, 0, 0, W, H);
-    },
-  };
-}
-
 export async function createThings({ stage, chapters, openStory, reduced }) {
-  const shelf = document.getElementById('shelf'), scene = document.getElementById('table-scene');
-  try { await Promise.all([document.fonts.load('20px "VT323"'), document.fonts.load('700 9px "Space Mono"')]); } catch { /* falls back to monospace */ }
+  const shelf = document.getElementById('shelf'), scene = document.getElementById('table-scene'), copy = document.querySelector('.summary-copy');
+  try { await document.fonts.load('700 9px "Space Mono"'); } catch { /* falls back to monospace */ }
   const indexOf = (id) => chapters.findIndex((c) => c.id === id), felt = indexOf('about');
   const dpr = Math.min(devicePixelRatio || 1, 2);
   const hint = document.createElement('p');
-  hint.className = 'scene-hint'; hint.setAttribute('aria-hidden', 'true');
+  hint.className = 'scene-hint is-seen'; hint.setAttribute('aria-hidden', 'true');
   hint.textContent = matchMedia('(hover: hover)').matches ? 'Everything so far, in one place. Pick one up.' : 'Everything so far. Tap one to open it.';
-  scene.append(hint);
+  document.querySelector('.summary-head').append(hint);
 
   let live = !reduced, hovered = null, mx = 0, my = 0, watch = null;
   const things = DEFS.map((def, i) => {
@@ -204,7 +181,7 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
     const seat = document.createElement('i'); seat.className = 'table-seat'; seat.style.aspectRatio = `${def.w} / ${def.h}`; scene.append(seat);
     const thing = { ...def, i, el, canvas, home, seat, slot: document.querySelector(`[data-slot="${def.key}"]`), ci: def.chapter ? indexOf(def.chapter) : -1, mode: 'shelf', lift: 0, seen: -1 };
     thing.ctx = def.key === 'watch' ? null : canvas.getContext('2d');
-    thing.painter = def.key === 'drone' ? makeDrone(thing) : def.key === 'globe' ? makeGlobe() : def.key === 'packets' ? makePackets() : def.key === 'badge' ? makeBadge() : null;
+    thing.painter = def.key === 'drone' ? makeDrone(thing) : def.key === 'globe' ? makeGlobe() : def.key === 'packets' ? makePackets() : null;
     el.addEventListener('pointerenter', () => { hovered = thing; });
     el.addEventListener('pointerleave', () => { if (hovered === thing) hovered = null; });
     el.addEventListener('click', () => {
@@ -228,7 +205,12 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
   function update(p) {
     const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now; frame++;
     const boxed = innerWidth > 1100, roomy = innerWidth > 820;   // the shelf only exists on wide screens (see journey.css)
-    const wTable = smooth(felt - 0.34, felt - 0.12, p) * (1 - smooth(felt + 0.3, felt + 0.5, p));
+    // they stand around him on the summary's first screen and go back to the box as its copy comes up
+    const copyTop = copy.getBoundingClientRect().top / innerHeight;
+    // on a phone they sit in a grid under the copy instead, and arrive as that grid scrolls in
+    const grid = roomy ? null : scene.getBoundingClientRect();
+    const wTable = roomy ? smooth(felt - 0.34, felt - 0.12, p) * smooth(0.62, 0.92, copyTop)
+      : smooth(innerHeight, innerHeight * 0.8, grid.top) * smooth(0, innerHeight * 0.15, grid.bottom);
     for (const t of things) {
       const wSlot = t.ci < 0 ? 0 : 1 - smooth(0.4, 0.6, Math.abs(p - t.ci));
       const k = Math.max(wSlot, wTable), toTable = wTable >= wSlot;
@@ -237,8 +219,8 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
       if (k > 0.001) {
         if (!toTable) b = fit(t.slot.getBoundingClientRect(), t);
         else if (roomy) {
-          const [x, y] = stage.place(t.table.u, t.table.v), bob = live ? Math.sin(now / 1000 * 0.8 + t.i * 1.7) * 6 * t.table.z : 0;
-          b = { x: x - mx * 26 * t.table.z, y: y - my * 16 * t.table.z + bob, s: t.table.s * Math.min(1.15, innerHeight / 900) };
+          const bob = live ? Math.sin(now / 1000 * 0.8 + t.i * 1.7) * 6 * t.table.z : 0;
+          b = { x: t.table.x * innerWidth - mx * 26 * t.table.z, y: t.table.y * innerHeight - my * 16 * t.table.z + bob, s: t.table.s * Math.min(1.15, innerHeight / 900) };
         } else b = fit(t.seat.getBoundingClientRect(), t);
       }
       t.mode = k > 0.96 ? (toTable ? 'table' : 'slot') : k < 0.04 ? 'shelf' : 'flight';

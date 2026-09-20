@@ -5,7 +5,7 @@ import { createStage } from './stage.js';
 document.documentElement.classList.add('js');
 
 const chapters = [...document.querySelectorAll('.chapter')].map((el) => ({
-  el, id: el.id, state: el.dataset.state, side: el.dataset.side, note: el.dataset.note, form: el.dataset.form,
+  el, id: el.id, state: el.dataset.state, side: el.dataset.side, note: el.dataset.note, form: el.dataset.form, anchor: el.dataset.anchor,
 }));
 const note = document.getElementById('stage-note');
 const rail = document.getElementById('rail');
@@ -37,7 +37,8 @@ function measure() {
   const max = document.documentElement.scrollHeight - innerHeight;
   marks = chapters.map((c, i) => {
     const top = c.el.offsetTop, mid = top + c.el.offsetHeight / 2;
-    const centre = i === 0 ? innerHeight / 2 : i === chapters.length - 1 ? max + innerHeight / 2 : mid;
+    // the summary is settled once its first screen fills the window, however long the copy under it runs
+    const centre = i === 0 ? innerHeight / 2 : i === chapters.length - 1 ? max + innerHeight / 2 : c.anchor === 'top' ? top + innerHeight / 2 : mid;
     return { top, centre };
   });
 }
@@ -55,43 +56,45 @@ function position() {
 let target = 0, eased = 0, activeNote = -1;
 // the portrait sits in the middle of whatever the copy column leaves free
 function anchor(c) {
-  if (isSmall()) return 0.5;
+  if (isSmall() || c.side === 'centre') return 0.5;
   const pad = Math.min(96, Math.max(22, innerWidth * 0.06)), copy = pad + Math.min(540, innerWidth * 0.42);
   const x = (copy + innerWidth) / 2 / innerWidth;
   return c.side === 'left' ? x : 1 - x;
 }
 
-// Chapter order is fixed by the page: 0 hero, 1 context (both melting), 2 particles, 3 characters,
-// 4 voxels, 5 bricks, 6 felt, 7 photograph. Each change owns a real stretch of scroll.
+// Chapter order is fixed by the page: 0 hero (8-bit pixels), 1 context (the pixel melt), 2 forecasting and
+// 3 MIT (characters: numbers, then symbols), 4 voxels, 5 Minecraft, 6 the felt summary, 7 photograph.
+// Between versions the cells break into points and re-gather. Each change owns a real stretch of scroll.
 function apply(view, real) {
   // on a phone the copy slides up over him, so every change has to finish while he is still in the clear
   const whole = Math.min(chapters.length - 2, Math.floor(real));
   const p = isSmall() ? whole + Math.min(1, Math.max(0, (real - whole - 0.04) / 0.6)) : real;
   const s = (a, b) => smooth(a, b, p);
-  view.melt = 0.28 + 0.72 * s(0.05, 0.95) + 0.4 * s(1.1, 1.62);
-  view.hero = 1 - s(0.15, 0.85);
-  view.puddle = (0.22 + 0.78 * s(0.1, 0.95)) * (1 - s(1.4, 1.82));
-  view.drain = s(1.18, 1.55);
-  view.liquid = 1 - s(1.8, 1.97);
-  view.disperse = 1 - s(1.2, 1.5);
-  view.free = s(1.22, 1.7);
-  view.gather = s(1.4, 1.97);
-  view.snap = s(2.3, 2.72);
-  view.glyph = s(2.42, 2.9);
-  view.fill = s(3.3, 3.78);
-  view.cube = s(3.5, 3.95);
-  view.stud = s(4.2, 4.55);
-  view.brick = s(4.25, 4.6);
+  view.melt = 0.06 + 0.94 * s(0.2, 0.95) + 0.4 * s(1.08, 1.45);
+  view.puddle = s(0.25, 0.95) * (1 - s(1.3, 1.65));
+  view.drain = s(1.1, 1.45);
+  view.liquid = 1 - s(1.6, 1.8);
+  view.disperse = 1 - s(1.1, 1.4);
+  view.free = s(1.12, 1.5);
+  view.gather = s(1.3, 1.75);
+  view.snap = s(1.55, 1.9);
+  view.glyph = s(1.62, 1.97);
+  view.ramp = s(2.4, 2.95);
+  view.solid = s(3.3, 3.95);
+  view.block = s(4.2, 4.55);
+  view.big = s(4.25, 4.6);
   view.build = s(4.5, 4.97);
-  view.soft = s(5.3, 5.85);
-  view.photo = s(6.35, 6.9);
-  view.floaters = Math.max(1 - s(1.25, 1.6), s(3.6, 3.95)) * (1 - s(5.25, 5.45));
-  view.bust = along(p, [[1.3, 0.8], [1.9, 0.68], [4.2, 0.68], [4.8, 0.8], [5.3, 0.8], [5.8, 0.64], [6.4, 0.64], [6.9, 0.765]]);
-  view.turnWeight = s(5.75, 6) * (1 - s(6.35, 6.7));
+  view.scatter = s(5.28, 5.8);
+  view.regather = s(6.32, 6.92);
+  view.photo = p > 6 ? 1 : 0;
+  view.felt = s(5.6, 5.9) * (1 - s(6.22, 6.45));
+  view.floaters = Math.max(1 - s(1.1, 1.4), s(3.7, 3.95)) * (1 - s(5.25, 5.45));
+  view.glow = along(p, [[1.5, 1], [1.95, 2.2], [3.3, 2.2], [3.9, 1], [5.4, 1], [5.8, 0.4], [6.4, 0.4], [6.9, 1]]);
+  view.bust = along(p, [[1.3, 0.8], [1.9, 0.68], [4.2, 0.68], [4.7, 0.655], [6.3, 0.655], [6.4, 0.765]]);
 
   const i = whole, f = real - i;
   view.cx = lerp(anchor(chapters[i]), anchor(chapters[i + 1]), smooth(0.12, 0.88, f));
-  view.cy = isSmall() ? 0.43 : along(p, [[1.3, 0.61], [1.9, 0.66], [4.3, 0.66], [4.9, 0.625], [5.3, 0.625], [5.8, 0.66]]);
+  view.cy = isSmall() ? 0.43 : along(p, [[1.3, 0.61], [1.9, 0.66], [4.3, 0.66], [4.9, 0.625], [5.3, 0.625], [5.8, 0.68], [6.4, 0.68], [6.9, 0.66]]);
   // he fills the height on a wide screen; on a tall or narrow one he is sized to the room beside the copy
   const room = innerWidth - Math.min(96, Math.max(22, innerWidth * 0.06)) - Math.min(540, innerWidth * 0.42);
   view.scale = isSmall() ? 0.92 : Math.min(1.3, room / (innerHeight * (2 / 3)) * 0.97);
@@ -102,7 +105,7 @@ function apply(view, real) {
   if (near !== activeNote) {
     activeNote = near;
     note.classList.remove('is-in');
-    setTimeout(() => { note.textContent = chapters[near].note; note.classList.add('is-in'); }, 260);
+    setTimeout(() => { note.textContent = chapters[near].note; note.dataset.kind = chapters[near].state; note.classList.add('is-in'); }, 260);
     for (const a of rail.children) a.toggleAttribute('aria-current', a.dataset.state === chapters[near].state);
     document.documentElement.dataset.chapter = chapters[near].id;
     document.documentElement.dataset.copy = chapters[near].side === 'left' ? 'left' : 'right';
@@ -111,18 +114,16 @@ function apply(view, real) {
 
 const stage = await createStage(document.getElementById('stage-canvas')).catch((error) => { console.error(error); return null; });
 if (!stage) document.documentElement.classList.add('no-stage');
-let things = null;
+let things = null, felt = null;
 if (stage) {
   measure();
   eased = target = position();
-  let pointerX = 0;
-  addEventListener('pointermove', (e) => { pointerX = (e.clientX / innerWidth - 0.5) * 2; }, { passive: true });
   const tick = () => {
     target = position();
     eased = reduced.matches ? target : eased + (target - eased) * 0.14;
     apply(stage.view, eased);
     window.__journey?.override?.(stage.view);   // lets shots/ hold a state still
-    stage.view.turn = stage.view.turnWeight * pointerX;
+    felt?.update(stage.view.felt);
     things?.update(eased);
     requestAnimationFrame(tick);
   };
@@ -137,12 +138,12 @@ window.__journey = { position: () => eased, target: () => position(), chapters: 
 const io = new IntersectionObserver((entries) => {
   for (const e of entries) if (e.isIntersecting) { e.target.classList.add('is-seen'); e.target.dispatchEvent(new Event('seen')); io.unobserve(e.target); }
 }, { threshold: 0.2 });
-document.querySelectorAll('.copy > *').forEach((el) => io.observe(el));
+document.querySelectorAll('.copy > *, .summary-head > *').forEach((el) => io.observe(el));
 
 // ASCII chart, typed out once
 const chart = document.getElementById('ascii-chart');
-const rows = [['GROK', 35.9], ['CLAUDE', 14.0], ['CHATGPT', 13.7], ['GEMINI', 9.0]];
-const chartText = ['THIRD-PARTY REQUESTS / 2025 SNAPSHOT', '', ...rows.map(([name, v]) =>
+const rows = [['grok', 35.9], ['claude', 14.0], ['chatgpt', 13.7], ['gemini', 9.0]];
+const chartText = ['third-party requests / 2025 snapshot', '', ...rows.map(([name, v]) =>
   `${name.padEnd(8)} ${'#'.repeat(Math.round(v / 40 * 26)).padEnd(26, '.')} ${v.toFixed(1).padStart(5)}%`)].join('\n');
 chart.textContent = chartText;
 chart.closest('figure').addEventListener('seen', () => {
@@ -170,7 +171,7 @@ function setForecast(kind) {
 document.querySelectorAll('[data-forecast]').forEach((b) => b.addEventListener('click', () => setForecast(b.dataset.forecast)));
 setForecast('prognosis');
 
-// Kiwi: 368 recorded falls as standing bricks, one of them down; they lean away from the pointer
+// Kiwi: 368 recorded falls as standing marks, one of them down; they lean away from the pointer
 const falls = document.getElementById('falls');
 const DOWN = 5 * 46 + 30, stand = [];
 for (let n = 0; n < 368; n++) { const m = document.createElement('i'); falls.append(m); stand.push(m); }
@@ -211,11 +212,14 @@ document.querySelectorAll('.blocks').forEach((grid) => {
 
 // the honest org chart: every line is in his verified work history
 const signed = document.getElementById('signed');
+const SIGNATURE = 'M30 22C24 12 8 16 6 30C5 42 18 42 25 28C27 23 29 18 29 17C27 28 26 40 33 39C39 38 42 27 45 20C46 17 48 17 48 21C48 25 47 30 47 30C49 24 54 17 59 19C62 21 60 25 63 26C67 27 70 22 72 20C71 27 71 37 77 37C83 37 87 27 89 19C88 32 88 47 82 54C78 58 73 55 76 49C80 42 93 38 99 30C103 25 106 20 109 22C103 17 94 22 94 31C94 40 103 38 108 29C110 25 111 21 111 20C110 28 110 38 116 38C121 37 123 29 126 22C126 28 125 34 125 37C127 28 132 19 138 21C143 23 139 33 142 37C144 39 147 37 148 35';
 ['Roadmap for both devices', 'Hardware check on every watch', 'Every supplier call', 'Every hiring interview', 'Sprint planning',
   'The company’s first cloud setup', 'Leading the investor meetings', 'Writing and sending the emails'].forEach((job, n) => {
   const li = document.createElement('li');
   li.style.setProperty('--n', n);
-  li.innerHTML = `<span>${job}</span><b>${n === 7 ? 'also Aryan' : 'Aryan'}</b>`;
+  // one pen stroke, written as "aryan"; each line gets its own slant and size so no two match
+  li.style.setProperty('--tilt', `${-5 + (n * 37 % 7)}deg`);
+  li.innerHTML = `<span>${job}</span><b>${n === 7 ? 'also ' : ''}<svg viewBox="0 0 148 60" role="img" aria-label="Aryan" style="width:${70 + (n * 13 % 5) * 3}px"><path pathLength="1" d="${SIGNATURE}"/></svg></b>`;
   signed.append(li);
 });
 
@@ -243,8 +247,9 @@ toggle.addEventListener('click', () => {
   things?.setMotion(!paused);
 });
 
-// the things he made: shelf at the side, flying into their chapters, gathered around him in felt
+// the felt character in the summary, and the things he made: shelf at the side, flying into their chapters, gathered around him there
 if (stage) {
+  import('./felt.js').then((m) => { felt = m.createFelt(document.getElementById('felt'), document.getElementById('about'), reduced.matches); }).catch((error) => console.error(error));
   import('./things.js').then((m) => m.createThings({ stage, chapters, openStory, reduced: reduced.matches }))
     .then((t) => { things = t; things.region(weeks.dataset.kind); })
     .catch((error) => console.error(error));
