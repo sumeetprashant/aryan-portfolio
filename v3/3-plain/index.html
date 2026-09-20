@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aryan Mehta</title>
+<style>
+@font-face { font-family: "Bricolage"; src: url("../../fonts/bricolage-grotesque-latin-opsz-normal.woff2") format("woff2"); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: "Source Sans 3"; src: url("../../fonts/source-sans-3-latin-wght-normal.woff2") format("woff2"); font-weight: 200 900; font-display: swap; }
+
+:root { --blue: #2140b4; --cream: #f0eee4; --mist: #b9c4ee; }
+* { box-sizing: border-box; margin: 0; }
+html, body { background: var(--blue); color: var(--cream); }
+body { font-family: "Source Sans 3", sans-serif; -webkit-font-smoothing: antialiased; }
+
+.stage { min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr) clamp(280px, 27vw, 400px);
+  grid-template-rows: auto 1fr; column-gap: 6vw; padding: 40px 6vw 0; max-width: 1600px; margin: 0 auto; }
+
+header { grid-column: 1 / -1; display: flex; justify-content: space-between; font-size: 17px; }
+header nav { display: flex; gap: 28px; }
+a { color: var(--cream); text-decoration: none; border-bottom: 1px solid transparent; padding-bottom: 2px; }
+a:hover, a:focus-visible { border-bottom-color: var(--cream); }
+
+.words { align-self: end; padding-bottom: 11vh; }
+h1 { font-family: "Bricolage", sans-serif; font-weight: 640; font-size: clamp(64px, 10.4vw, 168px); line-height: 0.9;
+  letter-spacing: -0.045em; font-variation-settings: "opsz" 96; margin-left: -0.05em; }
+.words p { margin-top: 40px; max-width: 31ch; font-size: clamp(20px, 1.65vw, 25px); line-height: 1.42; color: var(--mist); }
+.words p strong { color: var(--cream); font-weight: 400; }
+
+/* one photograph, printed in the page's own ink */
+figure { align-self: end; position: relative; aspect-ratio: 390 / 564; background: var(--blue); overflow: hidden; }
+figure img { position: absolute; height: 100%; width: auto; left: 50%; transform: translateX(-52.2%);
+  filter: url(#ink); }
+
+@media (max-width: 767px) {
+  .stage { grid-template-columns: 1fr; padding: 24px 24px 0; row-gap: 40px; }
+  .words { padding-bottom: 0; align-self: start; padding-top: 12vh; }
+  figure { width: 70%; justify-self: end; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" aria-hidden="true" style="position:absolute"><filter id="ink" color-interpolation-filters="sRGB">
+  <feColorMatrix type="matrix" values=".299 .587 .114 0 0  .299 .587 .114 0 0  .299 .587 .114 0 0  0 0 0 1 0"/>
+  <feComponentTransfer><feFuncR type="table" tableValues=".05 .13 .94"/><feFuncG type="table" tableValues=".09 .25 .93"/><feFuncB type="table" tableValues=".36 .71 .89"/></feComponentTransfer>
+</filter></svg>
+<main class="stage">
+  <header>
+    <span></span>
+    <nav><a href="../../assets/Aryan-Mehta-Resume.pdf">Resume</a><a href="mailto:mehtaaryan1999@gmail.com">Email</a></nav>
+  </header>
+  <div class="words">
+    <h1>Aryan<br>Mehta</h1>
+    <p><strong>I make health technology for people who will never read the spec sheet.</strong> Engineer, then researcher, then founding PM. Interim co-CEO at 22.</p>
+  </div>
+  <figure><img src="../../assets/headshot.jpg" alt="Aryan Mehta, smiling, in a navy suit"></figure>
+</main>
+</body>
+</html>

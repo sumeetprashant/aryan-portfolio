@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aryan Mehta</title>
+<link rel="icon" href="data:,">
+<style>
+@font-face { font-family: "Bricolage"; src: url("../../fonts/bricolage-grotesque-latin-opsz-normal.woff2") format("woff2"); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: "Source Sans 3"; src: url("../../fonts/source-sans-3-latin-wght-normal.woff2") format("woff2"); font-weight: 200 900; font-display: swap; }
+:root { --night: #04060c; --white: #f4f6fb; --haze: #93a0bd; --blue: #4d7dff; }
+* { box-sizing: border-box; margin: 0; }
+html, body { background: var(--night); color: var(--white); }
+body { font-family: "Source Sans 3", sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+#gl { position: fixed; inset: 0; width: 100vw; height: 100dvh; display: block; }
+a { color: inherit; text-decoration: none; }
+.top { position: fixed; z-index: 5; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 32px 5vw; font-size: 17px; }
+.top nav { display: flex; gap: 30px; align-items: center; color: var(--haze); }
+.top nav a:hover { color: var(--white); }
+.top .cta { color: var(--night); background: var(--white); padding: 11px 20px; border-radius: 999px; font-weight: 600; transition: transform .2s ease; }
+.top .cta:active { transform: scale(.97); }
+.hero { position: relative; z-index: 2; min-height: 100dvh; display: flex; align-items: flex-end; padding: 0 5vw 9vh; pointer-events: none; }
+h1 { font-family: "Bricolage", sans-serif; font-weight: 640; font-size: clamp(64px, 11.5vw, 210px); line-height: .86; letter-spacing: -0.05em; font-variation-settings: "opsz" 96; margin-left: -0.05em; }
+h1 span { display: block; overflow: hidden; } h1 span b { display: block; font-weight: inherit; transform: translateY(105%); animation: up 1.3s cubic-bezier(.16,1,.3,1) forwards; }
+h1 span:nth-child(2) b { animation-delay: .12s; }
+.line { margin-top: 30px; max-width: 30ch; font-size: clamp(20px, 1.7vw, 27px); line-height: 1.35; color: var(--haze); opacity: 0; animation: fade 1.2s ease 1.1s forwards; }
+.line em { font-style: normal; color: var(--white); }
+@keyframes up { to { transform: none; } } @keyframes fade { to { opacity: 1; } }
+.still h1 span b { transform: none; animation: none; } .still .line { opacity: 1; animation: none; }
+.after { position: relative; z-index: 2; min-height: 120dvh; display: grid; place-items: center; padding: 0 5vw; }
+.after p { font-family: "Bricolage", sans-serif; font-weight: 500; font-size: clamp(34px, 4.6vw, 80px); line-height: 1.02; letter-spacing: -0.04em; max-width: 17ch; text-align: center; }
+.after p i { font-style: normal; color: var(--blue); }
+@media (prefers-reduced-motion: reduce) { h1 span b { transform: none; animation: none; } .line { opacity: 1; animation: none; } }
+</style>
+<script type="importmap">{"imports":{"three":"../../vendor/three.module.min.js"}}</script>
+</head>
+<body>
+<canvas id="gl" aria-hidden="true"></canvas>
+<div class="top"><span>Aryan Mehta</span><nav><a href="../../assets/Aryan-Mehta-Resume.pdf">Resume</a><a class="cta" href="mailto:mehtaaryan1999@gmail.com">Say hello</a></nav></div>
+<section class="hero"><div>
+  <h1><span><b>Aryan</b></span><span><b>Mehta</b></span></h1>
+  <p class="line">I turn a body&rsquo;s raw signal into <em>something a caregiver can trust.</em> Interim co-CEO at 22.</p>
+</div></section>
+<section class="after"><p>Every person starts out as <i>a signal</i> on somebody&rsquo;s screen.</p></section>
+
+<script type="module">
+import * as THREE from "three";
+const q = new URLSearchParams(location.search), shot = q.has("shot");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+if (shot) document.body.classList.add("still");
+
+const canvas = document.getElementById("gl");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setClearColor(0x04060c, 1);
+const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(32, 1, .1, 50); cam.position.z = 5.2;
+
+const img = new Image();
+img.onload = () => {
+  const W = 470, H = 313, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0, W, H);
+  const d = x.getImageData(0, 0, W, H).data, home = [], start = [], col = [], seed = [];
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    const k = (j * W + i) * 4, r = d[k] / 255, g = d[k + 1] / 255, b = d[k + 2] / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), lum = .299 * r + .587 * g + .114 * b, sat = mx - mn;
+    if (sat < .11 && lum > .4 && (j < H * .78 || i < W * .42 || i > W * .6)) continue;
+    if (j < H * .12 && (i < W * .3 || i > W * .7)) continue;                       // the studio wall
+    const reps = lum > .45 ? 2 : 1;                             // lit skin gets more light
+    for (let n = 0; n < reps; n++) {
+      const px = (i + Math.random()) / W - .5, py = .5 - (j + Math.random()) / H;
+      home.push(px * 4.5, py * 3.0, (lum - .4) * .55 + (Math.random() - .5) * .05);
+      const t = Math.random();                                  // they begin as a flat trace, like a pulse on a monitor
+      start.push((t - .5) * 9, Math.sin(t * 40) * .05 * (Math.random() * 4), (Math.random() - .5) * .4);
+      const warm = Math.min(1, Math.max(0, (lum - .25) / .5));
+      col.push(.30 + .70 * warm, .49 + .47 * warm, 1.0 - .08 * warm, .22 + lum * .95);
+      seed.push(Math.random());
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(home, 3));
+  geo.setAttribute("aStart", new THREE.Float32BufferAttribute(start, 3));
+  geo.setAttribute("aCol", new THREE.Float32BufferAttribute(col, 4));
+  geo.setAttribute("aSeed", new THREE.Float32BufferAttribute(seed, 1));
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthTest: false, blending: THREE.AdditiveBlending,
+    uniforms: { uT: { value: 0 }, uForm: { value: 0 }, uMouse: { value: new THREE.Vector3(9, 9, 0) }, uPx: { value: renderer.getPixelRatio() }, uScale: { value: 1 } },
+    vertexShader: `
+      attribute vec3 aStart; attribute vec4 aCol; attribute float aSeed;
+      uniform float uT, uForm, uPx, uScale; uniform vec3 uMouse; varying vec4 vCol;
+      void main() {
+        float f = clamp((uForm - aSeed * .55) / .45, 0., 1.); f = f * f * (3. - 2. * f);
+        vec3 s = aStart; s.y += sin(s.x * 3. + uT * 1.6 + aSeed * 6.) * .22 * (1. - f);
+        vec3 p = mix(s, position, f);
+        p.xy += vec2(sin(uT * .7 + aSeed * 40.), cos(uT * .6 + aSeed * 33.)) * .006;
+        vec2 away = p.xy - uMouse.xy; float dist = length(away);
+        float push = smoothstep(.75, 0., dist) * f;
+        p.xy += normalize(away + 1e-4) * push * .38; p.z += push * .9;
+        vec4 mv = modelViewMatrix * vec4(p, 1.);
+        gl_Position = projectionMatrix * mv;
+        gl_PointSize = (1.7 + aCol.a * 1.9 + push * 3.) * uPx * uScale * (5.2 / -mv.z);
+        vCol = vec4(aCol.rgb, aCol.a * mix(.55, 1., f));
+      }`,
+    fragmentShader: `
+      varying vec4 vCol;
+      void main() { float r = length(gl_PointCoord - .5); float a = smoothstep(.5, .05, r); gl_FragColor = vec4(vCol.rgb * vCol.a * a * .95, 1.); }`,
+  });
+  const pts = new THREE.Points(geo, mat); scene.add(pts);
+
+  const fit = () => {
+    const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
+    const wide = w / h > 1.1; pts.position.set(wide ? 1.3 : 0, wide ? -.12 : .7, 0); pts.scale.setScalar(wide ? .94 : .62);
+    mat.uniforms.uScale.value = Math.max(.7, h / 900);
+  };
+  fit(); addEventListener("resize", fit);
+
+  const target = new THREE.Vector2(9, 9), ray = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), hit = new THREE.Vector3();
+  let tiltX = 0, tiltY = 0, mx = 0, my = 0;
+  addEventListener("pointermove", (e) => {
+    mx = e.clientX / innerWidth * 2 - 1; my = -(e.clientY / innerHeight * 2 - 1);
+    ray.setFromCamera(new THREE.Vector2(mx, my), cam);
+    if (ray.ray.intersectPlane(plane, hit)) { pts.worldToLocal(hit); target.set(hit.x, hit.y); }
+  });
+
+  const t0 = performance.now();
+  const frame = (now) => {
+    const t = (now - t0) / 1000, m = mat.uniforms;
+    const scrolled = Math.min(1, scrollY / (innerHeight * .9));
+    const arrive = shot || reduce ? 1 : Math.min(1, t / 3.4);
+    m.uT.value = shot ? 2 : t; m.uForm.value = arrive * (1 - scrolled);   // scrolling on lets the person go back to signal
+    m.uMouse.value.x += (target.x - m.uMouse.value.x) * .12; m.uMouse.value.y += (target.y - m.uMouse.value.y) * .12;
+    tiltX += (my * -.10 - tiltX) * .05; tiltY += (mx * .16 - tiltY) * .05; pts.rotation.set(tiltX, tiltY, 0);
+    renderer.render(scene, cam);
+    if (!shot) requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+};
+img.src = "../../assets/headshot.jpg";
+</script>
+</body>
+</html>

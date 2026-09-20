@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aryan Mehta</title>
+<style>
+@font-face { font-family: "Space Mono"; src: url("../../fonts/SpaceMono-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+
+:root { --room: #060b09; --glass: #08110d; --ph: #9af2bd; --dim: #4f8f6c; }
+* { box-sizing: border-box; margin: 0; }
+html, body { background: var(--room); color: var(--ph); }
+body { font-family: "Space Mono", ui-monospace, monospace; font-weight: 700; -webkit-font-smoothing: antialiased; }
+
+.stage { min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 9fr) minmax(0, 14fr); align-items: center;
+  gap: 4vw; padding: 0 6vw; max-width: 1600px; margin: 0 auto; }
+
+.name { position: absolute; top: 40px; left: 6vw; font-size: 14px; letter-spacing: 0.04em; }
+.links { position: absolute; top: 40px; right: 6vw; display: flex; gap: 28px; font-size: 14px; }
+.links a { color: var(--ph); text-decoration: none; }
+.links a:hover, .links a:focus-visible { text-decoration: underline; text-underline-offset: 5px; }
+
+h1 { font-size: clamp(30px, 3.1vw, 48px); line-height: 1.16; letter-spacing: -0.03em; text-wrap: balance; }
+p { margin-top: 28px; font-size: 16px; line-height: 1.65; color: var(--dim); max-width: 36ch; }
+
+/* the tube: no plastic, only the glass */
+.tube { position: relative; aspect-ratio: 4 / 3; width: 100%; border-radius: 44px / 52px; overflow: hidden; background: var(--glass);
+  box-shadow: inset 0 0 0 1px rgba(154,242,189,.10), inset 0 0 90px rgba(0,0,0,.9), 0 0 120px rgba(80,200,140,.06); }
+.tube canvas { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 0 5px rgba(120,255,175,.5)); }
+.tube::before { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 4px); }
+.tube::after { content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: radial-gradient(120% 120% at 50% 50%, transparent 55%, rgba(0,0,0,.72) 100%),
+              radial-gradient(60% 40% at 30% 12%, rgba(255,255,255,.05), transparent 70%); }
+
+@media (max-width: 767px) {
+  .stage { grid-template-columns: 1fr; padding: 110px 24px 48px; gap: 40px; }
+  .name { left: 24px; top: 24px; } .links { right: 24px; top: 24px; gap: 18px; }
+}
+</style>
+</head>
+<body>
+<div class="name">Aryan Mehta</div>
+<nav class="links"><a href="../../assets/Aryan-Mehta-Resume.pdf">Resume</a><a href="mailto:mehtaaryan1999@gmail.com">Email</a></nav>
+<main class="stage">
+  <div>
+    <h1>A bedside monitor shows a line. I work for the person behind it.</h1>
+    <p>Founding product manager, now interim co-CEO, of a company that builds health wearables for senior care. I am 22.</p>
+  </div>
+  <div class="tube"><canvas id="c" role="img" aria-label="Aryan Mehta's portrait, drawn one sweep at a time the way a patient monitor draws a heartbeat"></canvas></div>
+</main>
+
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const shot = q.has("shot");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const cv = document.getElementById("c"), ctx = cv.getContext("2d");
+  const ROWS = +(q.get("rows") || 118), COLS = 260, AMP = +(q.get("amp") || 2.6), SWEEP = 7000;
+  let field = null, W = 0, H = 0;
+
+  const img = new Image();
+  img.onload = () => {
+    // 4:3 window on the headshot, read as darkness: hair and beard become ridges, the wall stays flat
+    const o = document.createElement("canvas"); o.width = COLS; o.height = ROWS;
+    const x = o.getContext("2d");
+    x.filter = "blur(0.6px)";
+    x.drawImage(img, 128, 0, 620, 465, 0, 0, COLS, ROWS);
+    const d = x.getImageData(0, 0, COLS, ROWS).data;
+    field = new Float32Array(COLS * ROWS);
+    for (let i = 0; i < COLS * ROWS; i++) {
+      const l = (0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]) / 255;
+      field[i] = Math.min(1, Math.max(0, (0.74 - l) / 0.66));
+    }
+    size(); new ResizeObserver(size).observe(cv);
+    if (shot || reduce) draw(shot ? 1.9 : 1.999); else requestAnimationFrame(loop);
+  };
+  img.src = "../../assets/headshot.jpg";
+
+  function size() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    W = cv.width = Math.round(cv.clientWidth * dpr); H = cv.height = Math.round(cv.clientHeight * dpr);
+    if (shot || reduce) draw(shot ? 1.9 : 1.999);
+  }
+
+  let t0 = 0;
+  function loop(now) { if (!t0) t0 = now; draw((now - t0) / SWEEP); requestAnimationFrame(loop); }
+
+  // pass: 0..1 is the first sweep filling an empty tube, after that the beam keeps redrawing over its own afterglow
+  function draw(pass) {
+    ctx.clearRect(0, 0, W, H);
+    const first = pass < 1, beam = (pass % 1) * W, gap = W * 0.022;
+    const padY = H * 0.07, step = (H - padY * 1.9) / ROWS, amp = step * AMP;
+    const SEG = 3, segW = W / (COLS - 1);
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    for (let r = 0; r < ROWS; r++) {
+      const base = padY + (r + 1) * step;
+      const yAt = (c) => base - field[r * COLS + c] * amp;
+      // nearer traces hide farther ones, so the face has depth instead of tangling
+      ctx.beginPath(); ctx.moveTo(0, yAt(0));
+      for (let c = 1; c < COLS; c++) ctx.lineTo(c * segW, yAt(c));
+      ctx.lineTo(W, base + step); ctx.lineTo(0, base + step); ctx.closePath();
+      ctx.fillStyle = "#08110d"; ctx.fill();
+      for (let c = 0; c < COLS - 1; c += SEG) {
+        const x0 = c * segW, x1 = Math.min(COLS - 1, c + SEG) * segW;
+        let age = (beam - x0) / W; if (age < 0) age += 1;
+        if (first && x0 > beam) continue;
+        if (x0 > beam && x0 < beam + gap) continue;
+        let v = 0; for (let k = c; k <= Math.min(COLS - 1, c + SEG); k++) v = Math.max(v, field[r * COLS + k]);
+        const a = (0.16 + 0.84 * v) * (1 - 0.5 * age);
+        ctx.strokeStyle = `rgba(154,242,189,${a.toFixed(3)})`;
+        ctx.lineWidth = Math.max(1, H / 620) * (0.9 + v * 0.9);
+        ctx.beginPath(); ctx.moveTo(x0, yAt(c));
+        for (let k = c + 1; k <= Math.min(COLS - 1, c + SEG); k++) ctx.lineTo(k * segW, yAt(k));
+        ctx.stroke();
+      }
+    }
+  }
+})();
+</script>
+</body>
+</html>

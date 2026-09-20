@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aryan Mehta</title>
+<style>
+@font-face { font-family: "Space Grotesk"; src: url("../../fonts/SpaceGrotesk-wght.ttf") format("truetype"); font-weight: 300 700; font-display: swap; }
+@font-face { font-family: "Caveat"; src: url("../../fonts/Caveat-wght.ttf") format("truetype"); font-weight: 400 700; font-display: swap; }
+
+:root { --sheet: #f3f4f2; --ink: #111213; --rule: #c9ccc8; --grey: #63676a; --pen: #2541b2; }
+* { box-sizing: border-box; margin: 0; }
+html, body { background: var(--sheet); color: var(--ink); }
+body { font-family: "Space Grotesk", sans-serif; -webkit-font-smoothing: antialiased; }
+
+.stage { min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); grid-template-rows: auto 1fr;
+  column-gap: 7vw; padding: 40px 6vw 8vh; max-width: 1600px; margin: 0 auto; }
+header { grid-column: 1 / -1; display: flex; justify-content: space-between; font-size: 16px; font-weight: 500; }
+header nav { display: flex; gap: 28px; }
+a { color: var(--ink); text-decoration: none; border-bottom: 1px solid transparent; padding-bottom: 2px; }
+a:hover, a:focus-visible { border-bottom-color: var(--ink); }
+
+.words { align-self: end; }
+h1 { font-weight: 500; font-size: clamp(40px, 4.9vw, 78px); line-height: 0.98; letter-spacing: -0.045em; }
+.words p { margin-top: 32px; font-size: 19px; line-height: 1.5; color: var(--grey); max-width: 34ch; }
+
+/* a sign-off sheet. The form is printed, the names are written in. */
+.sheet { align-self: end; width: 100%; border-collapse: collapse; }
+.sheet caption { text-align: left; font-size: 14px; font-weight: 500; color: var(--grey); padding-bottom: 14px; caption-side: top; }
+.sheet th { text-align: left; font-size: 14px; font-weight: 500; color: var(--grey); padding: 0 0 10px; border-bottom: 1.5px solid var(--ink); }
+.sheet td { padding: 0; height: clamp(44px, 6.3vh, 58px); border-bottom: 1px solid var(--rule); vertical-align: bottom; }
+.sheet td:first-child { font-size: clamp(16px, 1.3vw, 19px); font-weight: 400; padding-bottom: 11px; letter-spacing: -0.01em; }
+.sheet th:last-child, .sheet td:last-child { width: 34%; }
+.sig { display: inline-block; font-family: "Caveat", cursive; font-weight: 600; font-size: clamp(30px, 2.6vw, 40px); line-height: 1; color: var(--pen);
+  transform-origin: 0 100%; padding: 0 12px 3px 4px; clip-path: inset(-20% 100% -20% 0); }
+.sig.on { clip-path: inset(-20% 0 -20% 0); transition: clip-path .42s cubic-bezier(.4,0,.2,1); }
+
+@media (max-width: 767px) {
+  .stage { grid-template-columns: 1fr; padding: 24px 24px 40px; row-gap: 48px; }
+  .words { padding-top: 10vh; }
+}
+@media (prefers-reduced-motion: reduce) { .sig { clip-path: none; } }
+</style>
+</head>
+<body>
+<main class="stage">
+  <header>
+    <span>Aryan Mehta</span>
+    <nav><a href="../../assets/Aryan-Mehta-Resume.pdf">Resume</a><a href="mailto:mehtaaryan1999@gmail.com">Email</a></nav>
+  </header>
+  <div class="words">
+    <h1>Small company. One name keeps showing up.</h1>
+    <p>I am 22 and interim co-CEO of a health wearables company in Boston. This is the honest org chart.</p>
+  </div>
+  <table class="sheet">
+    <caption>Kiwi Senior Health, who does what</caption>
+    <thead><tr><th scope="col">Job</th><th scope="col">Signed</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+</main>
+
+<script>
+(() => {
+  // every line is in his verified work history; nothing here is rounded up
+  const jobs = [
+    ["Roadmap for both devices", "Aryan", -3, 1],
+    ["Hardware check on every watch", "Aryan", 1, .96],
+    ["Packing and shipping every order", "Aryan", -2, 1.04],
+    ["Supplier calls to China, India, Brazil", "Aryan M.", -4, .94],
+    ["Every customer call", "Aryan", 0, 1],
+    ["Every hiring interview", "Aryan", -5, 1.06],
+    ["Sprint planning", "A.M.", -2, 1.1],
+    ["First cloud setup the company had", "Aryan", -1, .95],
+    ["Leading the investor meetings", "Aryan", -4, 1.02],
+    ["Writing and sending the emails", "also Aryan", -2, .98],
+  ];
+  const tb = document.getElementById("rows");
+  const shot = new URLSearchParams(location.search).has("shot");
+  const still = shot || matchMedia("(prefers-reduced-motion: reduce)").matches;
+  jobs.forEach(([job, name, tilt, scale], n) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${job}</td><td><span class="sig" style="transform: rotate(${tilt}deg) scale(${scale}); margin-left:${(n * 37) % 22}px">${name}</span></td>`;
+    tb.appendChild(tr);
+    const s = tr.querySelector(".sig");
+    if (still) { s.style.clipPath = "none"; } else setTimeout(() => s.classList.add("on"), 700 + n * 260);
+  });
+})();
+</script>
+</body>
+</html>
