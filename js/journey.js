@@ -1,20 +1,24 @@
-// Scroll drives which version of Aryan is on stage; everything else here is
-// the small per-chapter assets, the case-study reader and the motion control.
-import { createStage, STATE } from './stage.js';
+// Scroll drives what Aryan is made of; everything else here is the small per-chapter
+// assets, the case-study reader and the motion control.
+import { createStage } from './stage.js';
 
 document.documentElement.classList.add('js');
 
 const chapters = [...document.querySelectorAll('.chapter')].map((el) => ({
-  el, id: el.id, state: STATE[el.dataset.state], side: el.dataset.side,
-  melt: Number(el.dataset.melt ?? 0.3), note: el.dataset.note, form: el.dataset.form,
+  el, id: el.id, state: el.dataset.state, side: el.dataset.side, note: el.dataset.note, form: el.dataset.form,
 }));
-const indexOf = (state) => chapters.findIndex((c) => c.state === state);
 const note = document.getElementById('stage-note');
 const rail = document.getElementById('rail');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const isSmall = () => innerWidth <= 820;
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const lerp = (a, b, t) => a + (b - a) * t;
+// value at p along a list of [p, value] stops, eased between them
+const along = (p, stops) => {
+  if (p <= stops[0][0]) return stops[0][1];
+  for (let i = 1; i < stops.length; i++) if (p <= stops[i][0]) return lerp(stops[i - 1][1], stops[i][1], smooth(stops[i - 1][0], stops[i][0], p));
+  return stops[stops.length - 1][1];
+};
 
 // rail: one entry per distinct version
 const seen = new Set();
@@ -24,7 +28,7 @@ for (const c of chapters) {
   const a = document.createElement('a');
   a.href = `#${c.id}`;
   a.dataset.state = c.state;
-  a.innerHTML = `<span>Aryan, ${c.form.split(',')[0]}</span>`;
+  a.innerHTML = `<span>Aryan, ${c.form}</span>`;
   rail.append(a);
 }
 
@@ -38,6 +42,7 @@ function measure() {
   });
 }
 
+// 0 at the middle of the hero, 1 at the middle of the next chapter, and so on
 function position() {
   const y = scrollY + innerHeight / 2;
   let i = 0;
@@ -56,41 +61,69 @@ function anchor(c) {
   return c.side === 'left' ? x : 1 - x;
 }
 
-function apply(view, p) {
-  const i = Math.min(chapters.length - 2, Math.floor(p)), f = p - i;
-  const A = chapters[i], B = chapters[i + 1];
-  view.a = A.state; view.b = B.state;
-  view.mix = A.state === B.state ? 0 : smooth(0.3, 0.7, f);
-  view.melt = A.state === STATE.melt
-    ? (B.state === STATE.melt ? lerp(A.melt, B.melt, smooth(0.05, 0.95, f)) : A.melt + f * 0.5)
-    : 0.3;
-  const kb = indexOf(STATE.blocks), ka = indexOf(STATE.ascii), ks = indexOf(STATE.signal);
-  view.build = smooth(kb - 0.62, kb - 0.04, p);
-  view.fine = smooth(ka - 0.6, ka - 0.02, p);
-  view.conv = 1 - smooth(0.1, 0.6, Math.abs(p - ks));
-  view.cx = lerp(anchor(A), anchor(B), smooth(0.12, 0.88, f));
-  view.cy = isSmall() ? 0.4 : 0.66;
-  view.scale = isSmall() ? 0.92 : 1.3;
+// Chapter order is fixed by the page: 0 hero, 1 context (both melting), 2 particles, 3 characters,
+// 4 voxels, 5 bricks, 6 felt, 7 photograph. Each change owns a real stretch of scroll.
+function apply(view, real) {
+  // on a phone the copy slides up over him, so every change has to finish while he is still in the clear
+  const whole = Math.min(chapters.length - 2, Math.floor(real));
+  const p = isSmall() ? whole + Math.min(1, Math.max(0, (real - whole - 0.04) / 0.6)) : real;
+  const s = (a, b) => smooth(a, b, p);
+  view.melt = 0.28 + 0.72 * s(0.05, 0.95) + 0.4 * s(1.1, 1.62);
+  view.hero = 1 - s(0.15, 0.85);
+  view.puddle = (0.22 + 0.78 * s(0.1, 0.95)) * (1 - s(1.4, 1.82));
+  view.drain = s(1.18, 1.55);
+  view.liquid = 1 - s(1.8, 1.97);
+  view.disperse = 1 - s(1.2, 1.5);
+  view.free = s(1.22, 1.7);
+  view.gather = s(1.4, 1.97);
+  view.snap = s(2.3, 2.72);
+  view.glyph = s(2.42, 2.9);
+  view.fill = s(3.3, 3.78);
+  view.cube = s(3.5, 3.95);
+  view.stud = s(4.2, 4.55);
+  view.brick = s(4.25, 4.6);
+  view.build = s(4.5, 4.97);
+  view.soft = s(5.3, 5.85);
+  view.photo = s(6.35, 6.9);
+  view.floaters = Math.max(1 - s(1.25, 1.6), s(3.6, 3.95)) * (1 - s(5.25, 5.45));
+  view.bust = along(p, [[1.3, 0.8], [1.9, 0.68], [4.2, 0.68], [4.8, 0.8], [5.3, 0.8], [5.8, 0.64], [6.4, 0.64], [6.9, 0.765]]);
+  view.turnWeight = s(5.75, 6) * (1 - s(6.35, 6.7));
 
-  const near = Math.round(p);
+  const i = whole, f = real - i;
+  view.cx = lerp(anchor(chapters[i]), anchor(chapters[i + 1]), smooth(0.12, 0.88, f));
+  view.cy = isSmall() ? 0.43 : along(p, [[1.3, 0.61], [1.9, 0.66], [4.3, 0.66], [4.9, 0.625], [5.3, 0.625], [5.8, 0.66]]);
+  // he fills the height on a wide screen; on a tall or narrow one he is sized to the room beside the copy
+  const room = innerWidth - Math.min(96, Math.max(22, innerWidth * 0.06)) - Math.min(540, innerWidth * 0.42);
+  view.scale = isSmall() ? 0.92 : Math.min(1.3, room / (innerHeight * (2 / 3)) * 0.97);
+  view.cy += isSmall() ? 0 : (1.3 - view.scale) * -0.18;
+
+  const near = Math.round(real);
   document.documentElement.style.setProperty('--px', `${view.cx * 100}vw`);
   if (near !== activeNote) {
     activeNote = near;
     note.classList.remove('is-in');
     setTimeout(() => { note.textContent = chapters[near].note; note.classList.add('is-in'); }, 260);
-    for (const a of rail.children) a.toggleAttribute('aria-current', Number(a.dataset.state) === chapters[near].state);
+    for (const a of rail.children) a.toggleAttribute('aria-current', a.dataset.state === chapters[near].state);
+    document.documentElement.dataset.chapter = chapters[near].id;
+    document.documentElement.dataset.copy = chapters[near].side === 'left' ? 'left' : 'right';
   }
 }
 
 const stage = await createStage(document.getElementById('stage-canvas')).catch((error) => { console.error(error); return null; });
 if (!stage) document.documentElement.classList.add('no-stage');
+let things = null;
 if (stage) {
   measure();
   eased = target = position();
+  let pointerX = 0;
+  addEventListener('pointermove', (e) => { pointerX = (e.clientX / innerWidth - 0.5) * 2; }, { passive: true });
   const tick = () => {
     target = position();
     eased = reduced.matches ? target : eased + (target - eased) * 0.14;
     apply(stage.view, eased);
+    window.__journey?.override?.(stage.view);   // lets shots/ hold a state still
+    stage.view.turn = stage.view.turnWeight * pointerX;
+    things?.update(eased);
     requestAnimationFrame(tick);
   };
   tick();
@@ -98,11 +131,12 @@ if (stage) {
   new ResizeObserver(measure).observe(document.body);
   if (reduced.matches) stage.setMotion(false);
 }
+window.__journey = { position: () => eased, target: () => position(), chapters: chapters.map((c) => c.id) }; // read by shots/shoot-journey.mjs
 
 // reveal
 const io = new IntersectionObserver((entries) => {
   for (const e of entries) if (e.isIntersecting) { e.target.classList.add('is-seen'); e.target.dispatchEvent(new Event('seen')); io.unobserve(e.target); }
-}, { threshold: 0.25 });
+}, { threshold: 0.2 });
 document.querySelectorAll('.copy > *').forEach((el) => io.observe(el));
 
 // ASCII chart, typed out once
@@ -131,9 +165,37 @@ function setForecast(kind) {
   document.getElementById('forecast-context').textContent = prognosis
     ? 'I founded Prognosis and led a seven-person team. The platform was adopted by public-health agencies across three Indian states.'
     : 'In a separate Harvard collaboration, I led a ten-person team improving dengue prediction with better satellite data across ten zones in Colombia.';
+  things?.region(kind);
 }
 document.querySelectorAll('[data-forecast]').forEach((b) => b.addEventListener('click', () => setForecast(b.dataset.forecast)));
 setForecast('prognosis');
+
+// Kiwi: 368 recorded falls as standing bricks, one of them down; they lean away from the pointer
+const falls = document.getElementById('falls');
+const DOWN = 5 * 46 + 30, stand = [];
+for (let n = 0; n < 368; n++) { const m = document.createElement('i'); falls.append(m); stand.push(m); }
+const rest = new Float32Array(368);
+const settle = () => stand.forEach((m, n) => { m.style.transform = rest[n] ? `rotate(${rest[n]}deg)` : ''; });
+falls.closest('figure').addEventListener('seen', () => setTimeout(() => {
+  stand[DOWN].classList.add('is-down'); rest[DOWN] = 90; rest[DOWN - 1] = 12; rest[DOWN + 2] = -12;
+  settle();
+}, reduced.matches ? 0 : 900));
+if (!reduced.matches && matchMedia('(pointer: fine)').matches) {
+  let boxes = null, raf = 0, px = 0, py = 0;
+  addEventListener('resize', () => { boxes = null; });
+  falls.addEventListener('pointermove', (e) => { const r = falls.getBoundingClientRect(); px = e.clientX - r.left; py = e.clientY - r.top; if (!raf) raf = requestAnimationFrame(lean); });
+  falls.addEventListener('pointerleave', settle);
+  function lean() {
+    raf = 0;
+    if (!boxes) boxes = stand.map((m) => [m.offsetLeft + m.offsetWidth / 2 - falls.offsetLeft, m.offsetTop + m.offsetHeight - falls.offsetTop]);
+    stand.forEach((m, n) => {
+      if (n === DOWN) { m.style.transform = `rotate(${rest[n]}deg)`; return; }
+      const dx = boxes[n][0] - px, d = Math.hypot(dx, boxes[n][1] - 8 - py);
+      const push = d < 70 ? (1 - d / 70) * 28 * Math.sign(dx || 1) : 0;
+      m.style.transform = `rotate(${(rest[n] + push).toFixed(1)}deg)`;
+    });
+  }
+}
 
 // Kiwi: false alarms as blocks out of a hundred
 document.querySelectorAll('.blocks').forEach((grid) => {
@@ -147,15 +209,26 @@ document.querySelectorAll('.blocks').forEach((grid) => {
   }
 });
 
+// the honest org chart: every line is in his verified work history
+const signed = document.getElementById('signed');
+['Roadmap for both devices', 'Hardware check on every watch', 'Every supplier call', 'Every hiring interview', 'Sprint planning',
+  'The company’s first cloud setup', 'Leading the investor meetings', 'Writing and sending the emails'].forEach((job, n) => {
+  const li = document.createElement('li');
+  li.style.setProperty('--n', n);
+  li.innerHTML = `<span>${job}</span><b>${n === 7 ? 'also Aryan' : 'Aryan'}</b>`;
+  signed.append(li);
+});
+
 // case-study reader
 const dialog = document.getElementById('story-dialog');
 const dialogContent = document.getElementById('dialog-content');
-document.querySelectorAll('[data-story]').forEach((button) => button.addEventListener('click', () => {
-  dialogContent.replaceChildren(document.getElementById(`story-${button.dataset.story}`).content.cloneNode(true));
+function openStory(name) {
+  dialogContent.replaceChildren(document.getElementById(`story-${name}`).content.cloneNode(true));
   dialog.showModal();
   dialog.scrollTop = 0;
   stage?.setRunning(false);
-}));
+}
+document.querySelectorAll('[data-story]').forEach((button) => button.addEventListener('click', () => openStory(button.dataset.story)));
 dialog.querySelector('.dialog-close').addEventListener('click', () => dialog.close());
 dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
 dialog.addEventListener('close', () => stage?.setRunning(true));
@@ -167,4 +240,12 @@ toggle.addEventListener('click', () => {
   toggle.setAttribute('aria-pressed', String(paused));
   toggle.textContent = paused ? 'Resume motion' : 'Pause motion';
   stage?.setMotion(!paused);
+  things?.setMotion(!paused);
 });
+
+// the things he made: shelf at the side, flying into their chapters, gathered around him in felt
+if (stage) {
+  import('./things.js').then((m) => m.createThings({ stage, chapters, openStory, reduced: reduced.matches }))
+    .then((t) => { things = t; things.region(weeks.dataset.kind); })
+    .catch((error) => console.error(error));
+}

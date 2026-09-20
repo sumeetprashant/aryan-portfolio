@@ -1,0 +1,276 @@
+// The things he made. They live in a box at the side of the page, jump into their own chapter
+// as it arrives, and gather around him in the felt summary, where each one opens its case study.
+const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const lerp = (a, b, t) => a + (b - a) * t;
+const BLUE = '#7b93f5', DEEP = '#2c45c9', BONE = '#ece9e2', TAU = Math.PI * 2;
+
+const DEFS = [
+  { key: 'globe', name: 'The forecasts', story: 'forecast', chapter: 'forecast', w: 132, h: 132, table: { u: 0.91, v: 0.6, z: 0.45, s: 0.95 } },
+  { key: 'packets', name: 'The privacy study', story: 'privacy', chapter: 'research', w: 240, h: 96, table: { u: 0.13, v: 0.43, z: 0.6, s: 0.62 } },
+  { key: 'drone', name: 'The drone rig', story: 'capstone', chapter: 'engineering', w: 250, h: 250, table: { u: 0.1, v: 0.2, z: 0.75, s: 0.6 } },
+  { key: 'watch', name: 'The Kiwi watch', story: 'kiwi', chapter: 'kiwi', w: 128, h: 160, table: { u: 0.89, v: 0.2, z: 0.9, s: 1 } },
+  { key: 'badge', name: 'The roles he carried', story: 'path', chapter: null, w: 112, h: 140, table: { u: 0.19, v: 0.63, z: 1, s: 0.8 } },
+];
+
+/* ---------------- the drone on its two wires, seen from above, built from voxels ---------------- */
+function makeDrone(thing) {
+  const M = 68, G = 9.81, L = 2, D = 1;
+  let I = 18, th = 0, om = 0, drag = false, grab = 0, lastCross = null, crossings = [], kicked = false, clock = 0;
+  const state = document.getElementById('rig-state'), period = document.getElementById('rig-period'), inertia = document.getElementById('rig-inertia');
+  const say = (s) => { if (state) state.textContent = s; };
+  const resetRead = () => { crossings = []; lastCross = null; period.textContent = '0.00'; inertia.textContent = '0.0'; };
+  const cells = [];
+  for (let y = -10; y <= 9; y++) for (let x = -17; x <= 17; x++) {
+    const ax = Math.abs(x);
+    const wing = (ax <= 3 && y >= -2 && y <= 1) || (ax <= 9 && y >= -1 && y <= 1) || (ax <= 14 && y >= -1 && y <= 0) || (ax <= 17 && y === 0);
+    const body = (ax <= 1 && y >= -8 && y <= 7) || (x === 0 && y >= -10);
+    const tail = y >= 8 && ax <= 4;
+    if (!wing && !body && !tail) continue;
+    const tip = wing && ax >= 16, canopy = body && ax === 0 && y >= -6 && y <= -4;
+    cells.push({ x, y, c: canopy ? '#16225e' : body ? BONE : tip ? BONE : tail ? DEEP : null, k: ax / 17 });
+  }
+  const mixHex = (k) => { const a = [44, 69, 201], b = [123, 147, 245]; return `rgb(${a.map((v, i) => Math.round(lerp(v, b[i], k))).join(',')})`; };
+
+  const el = thing.canvas;
+  const ang = (e) => { const r = el.getBoundingClientRect(); return Math.atan2(e.clientY - r.top - r.height / 2, e.clientX - r.left - r.width / 2); };
+  el.addEventListener('pointerdown', (e) => {
+    if (thing.mode !== 'slot') return;
+    drag = true; el.setPointerCapture(e.pointerId); grab = ang(e) - th; om = 0; resetRead(); say('Twisting');
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    let a = ang(e) - grab; while (a > Math.PI) a -= TAU; while (a < -Math.PI) a += TAU;
+    th = Math.max(-1.1, Math.min(1.1, a));
+  });
+  const release = () => { if (drag) { drag = false; say('Swinging, timing'); } };
+  el.addEventListener('pointerup', release); el.addEventListener('pointercancel', release);
+  document.querySelectorAll('[data-inertia]').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('[data-inertia]').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+    I = Number(b.dataset.inertia); resetRead();
+    if (!drag && Math.abs(th) < 0.08) { th = 0.7; om = 0; }
+    say('Swinging, timing');
+  }));
+
+  return {
+    draw(x, W, H, now, dt, live) {
+      if (thing.mode === 'slot' && !kicked && live) { kicked = true; th = 0.75; om = 0; say('Swinging, timing'); }
+      if (!drag && live) {
+        const k = M * G * D * D / (4 * L), prev = th;
+        om += (-k / I * th - 0.05 * om) * dt; th += om * dt; clock += dt;   // the rig's own clock, so a pause never counts as swing time
+        if (prev < 0 && th >= 0 && thing.mode === 'slot') {
+          if (lastCross !== null) {
+            crossings.push(clock - lastCross); if (crossings.length > 3) crossings.shift();
+            const T = crossings.reduce((s, v) => s + v, 0) / crossings.length;
+            period.textContent = T.toFixed(2); inertia.textContent = (M * G * D * D * T * T / (16 * Math.PI * Math.PI * L)).toFixed(1); say('Measured');
+          }
+          lastCross = clock;
+        }
+        if (thing.mode !== 'slot' && Math.abs(th) < 0.2 && Math.abs(om) < 0.2) { th = 0.55; om = 0; }
+      }
+      const cx = W / 2, cy = H / 2, s = Math.min(W, H) * 0.46, v = s * 0.9 / 17.5;
+      x.strokeStyle = 'rgba(236,233,226,.13)'; x.lineWidth = 1;
+      x.beginPath(); x.arc(cx, cy, s, 0, TAU); x.stroke();
+      x.setLineDash([3, 6]); x.beginPath(); x.moveTo(cx - s, cy); x.lineTo(cx + s, cy); x.stroke(); x.setLineDash([]);
+      for (let k = -6; k <= 6; k++) { const a = k * Math.PI / 18; x.beginPath(); x.moveTo(cx + Math.cos(a) * (s - 6), cy + Math.sin(a) * (s - 6)); x.lineTo(cx + Math.cos(a) * s, cy + Math.sin(a) * s); x.stroke(); }
+      x.strokeStyle = 'rgba(123,147,245,.6)'; x.lineWidth = 2; x.beginPath(); x.arc(cx, cy, s, Math.min(0, th), Math.max(0, th)); x.stroke();
+      x.save(); x.translate(cx, cy); x.rotate(th);
+      for (const c of cells) {
+        const px = c.x * v - v / 2, py = c.y * v - v / 2;
+        x.fillStyle = c.c ?? mixHex(c.k); x.fillRect(px, py, v - 0.6, v - 0.6);
+        x.fillStyle = 'rgba(255,255,255,.28)'; x.fillRect(px, py, v - 0.6, 1); x.fillRect(px, py, 1, v - 0.6);
+        x.fillStyle = 'rgba(0,0,0,.32)'; x.fillRect(px, py + v - 1.6, v - 0.6, 1); x.fillRect(px + v - 1.6, py, 1, v - 0.6);
+      }
+      if (I > 30) for (const sx of [-10, 10]) {
+        x.fillStyle = '#0d1230'; x.fillRect(sx * v - v, -2 * v, 2 * v, 4 * v);
+        x.strokeStyle = BLUE; x.lineWidth = 1.2; x.strokeRect(sx * v - v, -2 * v, 2 * v, 4 * v);
+      }
+      for (const sx of [-5, 5]) { x.fillStyle = '#0a0b0e'; x.strokeStyle = BLUE; x.lineWidth = 1.6; x.beginPath(); x.arc(sx * v, 0, v * 0.7, 0, TAU); x.fill(); x.stroke(); }
+      x.restore();
+    },
+  };
+}
+
+/* ---------------- the forecasts: a globe of points, watched from orbit ---------------- */
+function makeGlobe() {
+  const N = 560, pts = [];
+  for (let i = 0; i < N; i++) { const y = 1 - 2 * (i + 0.5) / N, r = Math.sqrt(1 - y * y), a = i * 2.39996; pts.push([Math.cos(a) * r, y, Math.sin(a) * r]); }
+  const at = (lat, lon) => { const la = lat * Math.PI / 180, lo = lon * Math.PI / 180; return [Math.cos(la) * Math.sin(lo), Math.sin(la), Math.cos(la) * Math.cos(lo)]; };
+  // Prognosis: three Indian states. Harvard: ten regional zones in Colombia. Positions are indicative.
+  const regions = {
+    prognosis: { lon: 79, spots: [[23, 72], [19, 76], [26, 81]].map(([a, b]) => at(a, b)) },
+    harvard: { lon: -73, spots: [[10, -74], [7, -73], [6, -75], [4, -74], [3, -76], [5, -72], [2, -72], [8, -76], [1, -75], [6, -70]].map(([a, b]) => at(a, b)) },
+  };
+  let kind = 'prognosis', yaw = 0;
+  return {
+    region(k) { kind = k; },
+    draw(x, W, H, now, dt) {
+      const t = now / 1000, R = Math.min(W, H) * 0.4, cx = W / 2, cy = H / 2, reg = regions[kind];
+      const want = -reg.lon * Math.PI / 180 + Math.sin(t * 0.3) * 0.35;
+      yaw += (want - yaw) * Math.min(1, dt * 2.2);
+      const cyw = Math.cos(yaw), syw = Math.sin(yaw), ct = Math.cos(0.32), stl = Math.sin(0.32);
+      const turn = ([px, py, pz]) => { const X = px * cyw + pz * syw, Z = -px * syw + pz * cyw; return [X, py * ct - Z * stl, py * stl + Z * ct]; };
+      const sweep = ((t * 0.22) % 1) * 2.6 - 1.3;
+      for (const p of pts) {
+        const [X, Y, Z] = turn(p); if (Z < -0.15) continue;
+        const lit = Math.exp(-Math.pow((X - sweep) / 0.12, 2)), d = 0.25 + 0.75 * Math.max(0, Z);
+        x.fillStyle = `rgba(${Math.round(150 + 86 * lit)},${Math.round(165 + 68 * lit)},${Math.round(215 + 30 * lit)},${(0.22 + 0.6 * d + 0.3 * lit).toFixed(3)})`;
+        const s = 0.8 + 1.5 * d; x.fillRect(cx + X * R - s / 2, cy - Y * R - s / 2, s, s);
+      }
+      reg.spots.forEach((p, i) => {
+        const [X, Y, Z] = turn(p); if (Z < 0) return;
+        const pulse = 0.5 + 0.5 * Math.sin(t * 2.4 - i * 0.9);
+        x.fillStyle = `rgba(123,147,245,${(0.16 + 0.2 * pulse) * Z})`; x.beginPath(); x.arc(cx + X * R, cy - Y * R, 5 + 5 * pulse, 0, TAU); x.fill();
+        x.fillStyle = '#fff'; x.fillRect(cx + X * R - 1.5, cy - Y * R - 1.5, 3, 3);
+      });
+      // the orbit, and the satellite that feeds the model
+      x.strokeStyle = 'rgba(236,233,226,.16)'; x.lineWidth = 1; x.beginPath(); x.ellipse(cx, cy, R * 1.2, R * 0.34, -0.42, 0, TAU); x.stroke();
+      const a = t * 0.7, ox = Math.cos(a) * R * 1.2, oy = Math.sin(a) * R * 0.34, c = Math.cos(-0.42), s2 = Math.sin(-0.42);
+      if (Math.sin(a) > -0.2 || Math.abs(Math.cos(a)) > 0.8) { x.fillStyle = BONE; x.fillRect(cx + ox * c - oy * s2 - 2.5, cy + ox * s2 + oy * c - 2.5, 5, 5); }
+    },
+  };
+}
+
+/* ---------------- the privacy study: where the requests go once they leave the chat ---------------- */
+function makePackets() {
+  const packets = []; let clock = 0;
+  const ys = [15, 48, 81], names = ['ANALYTICS', 'TRACKING', '3RD PARTY'];
+  return {
+    draw(x, W, H, now, dt, live) {
+      const k = W / 240; x.save(); x.scale(k, k);
+      x.font = '700 9px "Space Mono", monospace'; x.textBaseline = 'middle'; x.textAlign = 'center'; x.lineWidth = 1;
+      const box = (bx, by, bw, bh, label, col) => { x.strokeStyle = col; x.strokeRect(bx + 0.5, by + 0.5, bw, bh); x.fillStyle = col; x.fillText(label, bx + bw / 2, by + bh / 2 + 1); };
+      box(4, 34, 52, 28, 'CHAT >_', 'rgba(236,233,226,.88)'); box(84, 34, 58, 28, 'AI TOOL', 'rgba(236,233,226,.88)');
+      ys.forEach((y, i) => box(174, y - 9, 62, 18, names[i], 'rgba(123,147,245,.95)'));
+      x.strokeStyle = 'rgba(236,233,226,.22)'; x.setLineDash([2, 3]);
+      x.beginPath(); x.moveTo(57, 48); x.lineTo(84, 48); x.stroke();
+      for (const y of ys) { x.beginPath(); x.moveTo(143, 48); x.lineTo(158, 48); x.lineTo(158, y); x.lineTo(174, y); x.stroke(); }
+      x.setLineDash([]);
+      // roughly one request in five leaves for a third party, inside the 9 to 36% the study measured
+      if (live) { clock += dt; while (clock > 0.22) { clock -= 0.22; packets.push({ t: 0, third: Math.random() < 0.22 ? 1 + (Math.random() * 3 | 0) : 0 }); } }
+      for (let i = packets.length - 1; i >= 0; i--) {
+        const p = packets[i]; if (live) p.t += dt * 0.55;
+        if (p.t > (p.third ? 1.65 : 1)) { packets.splice(i, 1); continue; }
+        let px, py = 48;
+        if (p.t < 1) px = lerp(57, 84, p.t);
+        else { const u = (p.t - 1) / 0.65, y = ys[p.third - 1]; if (u < 0.33) px = lerp(143, 158, u / 0.33); else if (u < 0.66) { px = 158; py = lerp(48, y, (u - 0.33) / 0.33); } else { px = lerp(158, 174, (u - 0.66) / 0.34); py = y; } }
+        x.fillStyle = p.t >= 1 ? BLUE : BONE; x.fillRect(px - 1.5, py - 1.5, 3, 3);
+      }
+      x.restore();
+    },
+  };
+}
+
+/* ---------------- the roles he carried: a felt badge ---------------- */
+function makeBadge() {
+  let cache = null;
+  return {
+    draw(x, W, H) {
+      if (!cache) {
+        cache = document.createElement('canvas'); cache.width = W; cache.height = H;
+        const c = cache.getContext('2d'), k = W / 112; c.scale(k, k);
+        c.strokeStyle = '#3b4a86'; c.lineWidth = 5; c.beginPath(); c.moveTo(44, 22); c.lineTo(30, -4); c.moveTo(68, 22); c.lineTo(82, -4); c.stroke();
+        c.fillStyle = '#1c2750'; c.beginPath(); c.roundRect(8, 18, 96, 116, 9); c.fill();
+        for (let i = 0; i < 2600; i++) { c.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},${Math.random() * 0.09})`; c.fillRect(8 + Math.random() * 96, 18 + Math.random() * 116, 1.4, 1.4); }
+        c.fillStyle = '#0a0b0e'; c.beginPath(); c.roundRect(42, 24, 28, 6, 3); c.fill();
+        c.strokeStyle = '#d9cfb8'; c.lineWidth = 1.4; c.setLineDash([5, 4]); c.beginPath(); c.roundRect(14, 36, 84, 92, 6); c.stroke(); c.setLineDash([]);
+        c.fillStyle = '#ece9e2'; c.textAlign = 'center'; c.font = '26px "VT323", monospace'; c.fillText('ARYAN', 56, 64);
+        c.fillStyle = BLUE; c.fillRect(30, 72, 52, 2);
+        c.fillStyle = '#c4c2bd'; c.font = '15px "VT323", monospace';
+        ['FOUNDER', 'PRODUCT MANAGER', 'INTERIM CO-CEO'].forEach((r, i) => { c.font = `${i ? 13 : 15}px "VT323", monospace`; c.fillText(r, 56, 90 + i * 14); });
+      }
+      x.drawImage(cache, 0, 0, W, H);
+    },
+  };
+}
+
+export async function createThings({ stage, chapters, openStory, reduced }) {
+  const shelf = document.getElementById('shelf'), scene = document.getElementById('table-scene');
+  try { await Promise.all([document.fonts.load('20px "VT323"'), document.fonts.load('700 9px "Space Mono"')]); } catch { /* falls back to monospace */ }
+  const indexOf = (id) => chapters.findIndex((c) => c.id === id), felt = indexOf('about');
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const hint = document.createElement('p');
+  hint.className = 'scene-hint'; hint.setAttribute('aria-hidden', 'true');
+  hint.textContent = matchMedia('(hover: hover)').matches ? 'Everything so far, in one place. Pick one up.' : 'Everything so far. Tap one to open it.';
+  scene.append(hint);
+
+  let live = !reduced, hovered = null, mx = 0, my = 0, watch = null;
+  const things = DEFS.map((def, i) => {
+    const el = document.createElement('button');
+    el.type = 'button'; el.className = 'thing'; el.style.setProperty('--w', `${def.w}px`); el.style.setProperty('--h', `${def.h}px`);
+    const canvas = document.createElement('canvas'); canvas.width = def.w * dpr; canvas.height = def.h * dpr;
+    const name = document.createElement('span'); name.className = 'thing-name'; name.textContent = def.name;
+    el.append(canvas, name); scene.append(el);
+    const home = document.createElement('i'); shelf.append(home);
+    const seat = document.createElement('i'); seat.className = 'table-seat'; seat.style.aspectRatio = `${def.w} / ${def.h}`; scene.append(seat);
+    const thing = { ...def, i, el, canvas, home, seat, slot: document.querySelector(`[data-slot="${def.key}"]`), ci: def.chapter ? indexOf(def.chapter) : -1, mode: 'shelf', lift: 0, seen: -1 };
+    thing.ctx = def.key === 'watch' ? null : canvas.getContext('2d');
+    thing.painter = def.key === 'drone' ? makeDrone(thing) : def.key === 'globe' ? makeGlobe() : def.key === 'packets' ? makePackets() : def.key === 'badge' ? makeBadge() : null;
+    el.addEventListener('pointerenter', () => { hovered = thing; });
+    el.addEventListener('pointerleave', () => { if (hovered === thing) hovered = null; });
+    el.addEventListener('click', () => {
+      if (thing.mode === 'table') openStory(def.story);
+      else if (thing.mode === 'shelf') document.getElementById(def.chapter ?? 'about').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
+      else if (def.key === 'watch') watch?.fall();
+    });
+    return thing;
+  });
+  const watchThing = things.find((t) => t.key === 'watch');
+  setTimeout(() => import('./watch.js').then((m) => { watch = m.createWatch(watchThing.canvas); }).catch((e) => console.error(e)), 900);
+
+  addEventListener('pointermove', (e) => {
+    mx = (e.clientX / innerWidth - 0.5) * 2; my = (e.clientY / innerHeight - 0.5) * 2;
+    if (watch) { const r = watchThing.canvas.getBoundingClientRect(); watch.pointer(Math.max(-1, Math.min(1, (e.clientX - r.left - r.width / 2) / 260)), Math.max(-1, Math.min(1, (e.clientY - r.top - r.height / 2) / 260))); }
+  }, { passive: true });
+
+  let last = performance.now(), frame = 0;
+  const fit = (r, t) => { const s = Math.min(r.width / t.w, r.height / t.h); return { x: r.left + r.width / 2, y: r.top + r.height / 2, s }; };
+
+  function update(p) {
+    const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now; frame++;
+    const boxed = innerWidth > 1100, roomy = innerWidth > 820;   // the shelf only exists on wide screens (see journey.css)
+    const wTable = smooth(felt - 0.34, felt - 0.12, p) * (1 - smooth(felt + 0.3, felt + 0.5, p));
+    for (const t of things) {
+      const wSlot = t.ci < 0 ? 0 : 1 - smooth(0.4, 0.6, Math.abs(p - t.ci));
+      const k = Math.max(wSlot, wTable), toTable = wTable >= wSlot;
+      const a = fit(t.home.getBoundingClientRect(), t);
+      let b = a;
+      if (k > 0.001) {
+        if (!toTable) b = fit(t.slot.getBoundingClientRect(), t);
+        else if (roomy) {
+          const [x, y] = stage.place(t.table.u, t.table.v), bob = live ? Math.sin(now / 1000 * 0.8 + t.i * 1.7) * 6 * t.table.z : 0;
+          b = { x: x - mx * 26 * t.table.z, y: y - my * 16 * t.table.z + bob, s: t.table.s * Math.min(1.15, innerHeight / 900) };
+        } else b = fit(t.seat.getBoundingClientRect(), t);
+      }
+      t.mode = k > 0.96 ? (toTable ? 'table' : 'slot') : k < 0.04 ? 'shelf' : 'flight';
+      t.lift += ((hovered === t && t.mode === 'table' ? 1 : 0) - t.lift) * 0.18;
+      const e = k * k * (3 - 2 * k), hop = Math.sin(e * Math.PI);
+      let x = lerp(a.x, b.x, e), y = lerp(a.y, b.y, e) - hop * (boxed ? 90 : 0), s = lerp(a.s, b.s, e) * (1 + t.lift * 0.12);
+      let opacity = 1;
+      if (!boxed) { x = b.x; y = b.y; s = b.s * (0.72 + 0.28 * e) * (1 + t.lift * 0.12); opacity = e; }
+      const tilt = t.mode === 'table' && roomy ? `perspective(900px) rotateX(${(-my * 9 * t.table.z).toFixed(2)}deg) rotateY(${(mx * 13 * t.table.z).toFixed(2)}deg) ` : '';
+      t.el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) ${tilt}rotate(${(hop * (t.i % 2 ? -14 : 14)).toFixed(1)}deg) scale(${s.toFixed(4)}) translate(-50%,-50%)`;
+      t.el.style.opacity = opacity.toFixed(3);
+      t.el.style.visibility = opacity < 0.01 ? 'hidden' : 'visible';
+      t.el.style.pointerEvents = t.mode === 'flight' ? 'none' : 'auto';
+      t.el.classList.toggle('is-table', t.mode === 'table');
+      t.el.classList.toggle('is-drag', t.mode === 'slot' && t.key === 'drone');
+      t.el.tabIndex = t.mode === 'table' || (t.mode === 'slot' && t.key === 'watch') ? 0 : -1;
+      t.el.setAttribute('aria-label', t.mode === 'table' ? `${t.name}. Open the case study` : t.mode === 'slot' && t.key === 'watch' ? 'The Kiwi watch. Drop it to see a detected fall' : t.name);
+      t.home.classList.toggle('is-out', k > 0.04);
+
+      // paint: every frame while it is out, now and then while it rests in the box
+      const active = t.mode !== 'shelf' || frame % 20 === t.i || t.seen < 0;
+      if (!active || opacity < 0.01) continue;
+      t.seen = frame;
+      if (t.key === 'watch') { watch?.render(now); continue; }
+      const c = t.ctx; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, t.w, t.h);
+      t.painter.draw(c, t.w, t.h, now, dt, live && t.mode !== 'shelf');
+    }
+  }
+
+  return {
+    update,
+    region(kind) { things[0].painter.region(kind); },
+    setMotion(on) { live = on && !reduced; },
+  };
+}
