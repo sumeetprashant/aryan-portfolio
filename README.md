@@ -18,8 +18,9 @@ To choose another port, set the `PORT` environment variable first.
 ## What to edit
 
 The page is one idea: the site stays composed while Aryan is redrawn in a new
-material per chapter (melting pixels, clay, ASCII, particles, built blocks, felt,
-the real photograph). "Always a work in progress" is the navigation.
+material per chapter (pixels, a pixel melt, characters, cubes, blocks, the felt
+character, the photograph with a few pixels left in it). Every change of material passes
+through characters. A light / dark switch sits in the header.
 
 - `index.html`: all copy, one `<section class="chapter">` per version. `data-state`
   picks the portrait material, `data-side` the copy column, `data-note` the

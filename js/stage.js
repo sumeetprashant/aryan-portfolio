@@ -1,7 +1,7 @@
 // The portrait stage. One fixed WebGL2 canvas, one set of cells. Every cell has a home
 // on the registered portrait (scripts/prep_stage.py) and scroll decides what it is right
-// now: an 8-bit pixel, a free point, part of a character, a lit cube, part of a block, a
-// photo texel. Nothing swaps; between versions the cells break into points and re-gather.
+// now: a pixel, part of a character, a lit cube, part of a block, a photo texel. Nothing
+// swaps; between versions the cells flip to characters and the characters resolve again.
 
 const ASPECT = 2 / 3;
 const VMAX = 0.78125;
@@ -22,8 +22,8 @@ const vec3 DEEP = vec3(.16, .24, .72);
 const vec3 BONE = vec3(.93, .92, .89);
 uniform vec2 uRes, uCenter, uPtr, uGrid;
 uniform float uTime, uScale, uSub, uLod, uCellLod, uCellPx, uGlyphN, uBust, uSmall, uBlk;
-uniform float uMelt, uLiquid, uDrain, uDisperse, uFree, uGather, uSnap, uGlyph, uRamp, uSolid, uBlock, uBuild, uScatter, uRegather, uPhoto;
-uniform sampler2D uReal, uMc, uAtlas;
+uniform float uMelt, uLiquid, uDrain, uDisperse, uGlyph, uRamp, uSolid, uFlip, uLeave, uReturn, uPhoto, uLight;
+uniform sampler2D uReal, uAtlas;
 
 float h11(float n){ return fract(sin(n * 127.1) * 43758.5453); }
 float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -45,14 +45,14 @@ vec3 vivid(vec3 c){
   c += smoothstep(.0, .10, c.b - c.r) * vec3(.0, .05, .30) * smoothstep(.02, .2, l);
   return c;
 }
-// 8-bit colour: five levels a channel, ordered dither on the cell grid
-float bayer2(vec2 c){ vec2 m = mod(c, 2.); return 2. * m.x + 3. * m.y - 4. * m.x * m.y; }
-float bayer4(vec2 c){ return (4. * bayer2(c) + bayer2(floor(c * .5)) + .5) / 16.; }
-vec3 pal(vec3 c, vec2 cell){
-  vec3 g = sqrt(clamp(c, 0., 1.));   // steps even to the eye, so skin and hair keep their shape
-  g = floor(g * 5. + .2 + bayer4(cell) * .6) / 5.;
-  return g * g;
+// the pixel look: warm, ten even levels a channel, no dither
+vec3 warm(vec3 c){
+  float l = dot(c, LUMA);
+  c = mix(vec3(l), c, 1.6) * vec3(1.2, 1.08, .98);
+  c += smoothstep(.02, .14, c.b - c.r) * vec3(.0, .05, .30);
+  return c;
 }
+vec3 q9(vec3 c){ return floor(clamp(c, 0., 1.) * 9. + .5) / 9.; }
 // the ragged line the melt has eaten up to, moving on twos like everything else in the melt
 float cutLine(float u){
   float t = floor(uTime * 6.) / 6.;
@@ -65,16 +65,16 @@ const CELL_VS = COMMON + `
 layout(location = 0) in vec2 aCorner;
 layout(location = 1) in vec4 aCell;
 layout(location = 2) in vec4 aSeed;
-out vec2 vQ; out vec2 vP;
+out vec2 vQ;
 flat out vec2 vCell;
-flat out vec4 vReal, vMc, vPair, vW1, vW2, vW3;
+flat out vec4 vReal, vBlk, vPair, vW1, vW2, vW3;
 
 float loc(float U, float th, float w){ float a = th * (1. - w); return smoothstep(a, a + w, U); }
 
 void main(){
   vec2 cell = aCell.xy, sub = aCell.zw, cs = 1. / uGrid;
   vec2 cuv = (cell + .5) * cs;
-  float hc = h21(cell + .37), hs = aSeed.x;
+  float hc = h21(cell + .37);
   float pairRow = floor(cell.y * .5);
   vec2 pairUv = vec2(cell.x + .5, pairRow * 2. + 1.) * cs;
   float hp = h21(vec2(cell.x, pairRow) + 3.1);
@@ -82,80 +82,47 @@ void main(){
   vec4 real = texP(uReal, cuv, uCellLod);
   vec4 pr = texP(uReal, pairUv, uCellLod + .5);
 
-  // which Minecraft block this cell belongs to: uBlk cells a side
+  // which block this cell belongs to: uBlk cells a side, coloured from the same photograph
   vec2 bI = floor(cell / uBlk);
   vec2 bC = (bI + .5) * uBlk * cs;
-  float bh = h21(bI + 11.), bh2 = h21(bI + 3.);
-  vec4 mc = texP(uMc, bC, uCellLod + log2(uBlk));
+  float bh = h21(bI + 11.);
+  vec4 blk = texP(uReal, bC, uCellLod + log2(uBlk));
 
-  // local progress of every change, staggered so each one ripples through the figure
-  float rise = 1. - clamp(cuv.y / FLOOR, 0., 1.);
-  float cut = cutLine(cuv.x);
-  float gone = step(cut, cuv.y) * uLiquid;
-  float free = loc(uFree, rise * .55 + hs * .45, .4);
-  float gat = loc(uGather, hs * .45 + rise * .35 + hc * .2, .45);
-  float snap = loc(uSnap, hc * .5 + cuv.y * .7, .35);
-  float kg = loc(uGlyph, hp * .5 + cuv.y * .7, .3);
+  // local progress of every change, staggered so each one ripples through the figure.
+  // Every change of form passes through characters: a cell flips to a glyph, the glyph resolves as the next form.
+  float gone = step(cutLine(cuv.x), cuv.y) * uLiquid;
+  float kg = loc(uGlyph, hp * .4 + cuv.y * .8, .3);
+  float back = gone * loc(uDrain, hp * .6 + .3, .4);   // as the melt drains, what it took comes back as characters
   float centre = length((cuv - vec2(.5, .33)) * vec2(1., 1.15));
   float x3 = loc(uSolid, hp * .4 + centre * 1.1, .4);
   float fill = smoothstep(0., .6, x3), cube = smoothstep(.45, 1., x3);
-  float st = loc(uBlock, bh * .6 + rise * .4, .35) * (1. - step(.5, uPhoto));   // under the photograph he is plain cubes again
-  float land = loc(uBuild, clamp(1. - bC.y / .75, 0., 1.) * .86 + bh * .14, .1);
-  float x5 = loc(uScatter, hs * .5 + cuv.y * .6, .45);
-  float x6 = loc(uRegather, hs * .45 + centre * .55, .45);
+  float x4 = loc(uFlip, bh * .45 + clamp(1. - bC.y / .75, 0., 1.) * .55, .3);   // blocks resolve from the base up
+  float x5 = loc(uLeave, hp * .5 + cuv.y * .5, .4);
+  float x6 = loc(uReturn, hp * .45 + centre * .55, .4);
+  float ph = step(.5, uPhoto);
+  float st = smoothstep(.45, .55, x4) * (1. - ph);
+  float solidDone = step(.999, x3);
+  float G = max(max(kg, back) * (1. - solidDone), max(smoothstep(0., .4, x4) * (1. - smoothstep(.6, 1., x4)), smoothstep(0., .35, x5) * (1. - smoothstep(.6, 1., x6))));
+  float seen = max(1. - smoothstep(.5, 1., x5), smoothstep(0., .3, x6));   // in the summary the figure on the stage steps aside
+
+  // the end: mostly photograph, but his edges, one shoulder and a patch or two never finish resolving
+  float faceD = length((cuv - vec2(.5, .33)) * vec2(1.25, 1.));
+  float edgeP = (1. - smoothstep(.5, .97, texP(uReal, cuv, uCellLod + 2.5).a)) * .6 * smoothstep(.0, .12, cuv.x);
+  float shP = smoothstep(.66, .86, cuv.x) * smoothstep(.5, .6, cuv.y) * (.3 + .7 * vnoise(cell * .35));
+  float patchP = smoothstep(.7, .84, vnoise(cell * .16 + 5.)) * smoothstep(.15, .24, faceD) * .85;
+  float roll = h21(cell + 5.3 + floor(uTime * .7) * step(.85, h21(cell + 1.7)));   // a few of them keep changing their mind
+  float keep = step(roll, max(edgeP, max(shP, patchP)));
+  float win = ph * smoothstep(.6, 1., x6) * (1. - keep);
 
   vec2 home = (cell + (sub + .5) / uSub) * cs;
   vec2 pos = home;
 
   // hero and melt: the top of the head lets go of a few pixels
-  float faceD = length((cuv - vec2(.5, .33)) * vec2(1.25, 1.));
   float dsp = uDisperse * step(.45, hc) * smoothstep(.2, .75, (cuv.x - .5) * 1.7 + (.3 - cuv.y) * 2.3 + (hc - .45) * .5) * smoothstep(.13, .2, faceD);
   pos += dsp * vec2(.035 + .13 * h21(cell + 2.), -.03 - .15 * h21(cell + 7.)) * (.78 + .22 * sin(uTime * .35 + hc * 6.28));
 
-  // melt to characters: what melted lifts off the puddle, what was still standing loosens in place
-  vec2 jit = (aSeed.yz - .5) * cs * 1.7 + .0035 * vec2(sin(uTime * .9 + hs * 40.), cos(uTime * .7 + hs * 31.));
-  vec2 pud = vec2(.5 + (cuv.x - .5) * .8 + (aSeed.y - .5) * .07, FLOOR + .002 + .016 * aSeed.z);
-  vec2 start = mix(home + (aSeed.yz - .5) * vec2(.07, .05), pud, gone);
-  float g2 = gat * gat * (3. - 2. * gat);
-  vec2 fly = mix(start, home + jit, g2);
-  fly.x += sin(g2 * 5. + hs * 30. + uTime * .3) * .03 * (1. - g2) * g2 * 4.;
-  fly.y -= (1. - g2) * g2 * (.05 + .1 * aSeed.w) * gone;
-  fly = mix(fly, home, snap);
-  vec2 dp = (fly - uPtr) * vec2(ASPECT, 1.);
-  fly += normalize(dp + 1e-5) / vec2(ASPECT, 1.) * .04 * exp(-dot(dp, dp) / .004) * (1. - snap);
-  pos = mix(pos, fly, free);
-
-  // characters to cubes: each cell jumps out as a point and lands as a solid
-  float p3 = smoothstep(0., .3, x3) * (1. - smoothstep(.55, .95, x3));
-  pos += (aSeed.yz - .5) * vec2(.2, .13) * sin(3.14159 * x3) * (.4 + .6 * aSeed.w);
-
-  // blocks: each one loosens into its cells and hovers, then drops home from the base up
-  float back = land - 1.;
-  float seat = 1. + 2.2 * back * back * back + 1.2 * back * back;   // overshoots, then seats
-  float hov = st * (1. - seat);
-  float bump = land * (1. - land) * 4.;
-  vec2 off = vec2((bh - .5) * .012, -(max(.75 - bC.y, 0.) * .1 + .0035 * bh2)) * hov;   // an exploded view: every course lifts clear of the one below
-  off += hov * .005 * vec2(sin(uTime * .8 + bh * 20.), cos(uTime * .6 + bh * 14.));
-  vec2 bp = (bC + off - uPtr) * vec2(ASPECT, 1.);
-  off += normalize(bp + 1e-5) / vec2(ASPECT, 1.) * .03 * exp(-dot(bp, bp) / .006) * hov;
-  float p4 = hov * step(.84, hs);
-  pos += (home - bC) * .16 * hov + off + p4 * (aSeed.yz - .5) * vec2(.09, .07);
-
-  // the summary: everything lets go and circles the room; then it comes home as the photograph
-  float e5 = x5 * x5 * (3. - 2. * x5), e6 = x6 * x6 * (3. - 2. * x6);
-  float out5 = e5 * (1. - e6);
-  float th = hs * 6.2832 + uTime * .025 * (.4 + aSeed.w);
-  float rr = .2 + .4 * pow(aSeed.y, .7);
-  vec2 halo = vec2(.5, .36) + vec2(cos(th) * rr * uRes.x / (uScale * ASPECT), sin(th) * rr * .9 * uRes.y / uScale);
-  pos = mix(pos, halo, out5);
-  pos.y -= sin(3.14159 * out5) * .06 * aSeed.z;
-  float p5 = smoothstep(0., .3, x5) * (1. - smoothstep(.6, 1., x6));
-
-  float lum = dot(real.rgb, LUMA);
-  float wPoint = max(max(free * (1. - kg), p3), max(p4, p5));
-  float size = mix(1., (.75 + .9 * lum + .7 * aSeed.w) * (1.1 + uSmall * .5), wPoint);
-  size *= mix(1. - gone, 1., free) * (1. - .35 * dsp);
-  size *= mix(1., step(.9, aSeed.w) * 1.25, out5);   // most of him waits out of sight; the rest is the dust in the room
+  // what has melted is gone until its character arrives
+  float size = max(1. - gone, step(.001, max(kg, back))) * (1. - .35 * dsp) * step(.001, seen);
 
   vec2 hf = cs / (2. * uSub);
   vec2 corner = (cell * uSub + sub + aCorner * .5 + .5) / (uGrid * uSub);   // shared bit for bit with its neighbours
@@ -169,106 +136,100 @@ void main(){
   float gl = max(clamp(pl * 1.12 + detail * 1.3, 0., 1.), .15) * step(.4, pr.a);
 
   vQ = (sub + aCorner * .5 + .5) / uSub;
-  vP = aCorner;
   vCell = cell;
-  vReal = real; vMc = mc;
+  vReal = real; vBlk = blk;
   vPair = vec4(pr.rgb, gl);
-  vW1 = vec4(wPoint, kg * free, fill, cube);
-  vW2 = vec4(st, smoothstep(.72, 1., land), step(h21(vec2(cell.x, pairRow) + 9.), uRamp), step(.5, uPhoto));
-  vW3 = vec4(hp, bump * st, mix(.3 + .7 * gat, 1., step(.001, uSolid)) * (1. - .45 * out5), p5);
+  vW1 = vec4(seen, G, fill * (1. - solidDone), cube * (1. - ph));
+  vW2 = vec4(st, win, step(h21(vec2(cell.x, pairRow) + 9.), uRamp), x4 * (1. - x4) * 4. * step(.5, x4) * (1. - ph));
+  vW3 = vec4(mix(hp, bh, st), 0., 0., 0.);
 }`;
 
 const CELL_FS = COMMON + `
-in vec2 vQ; in vec2 vP;
+in vec2 vQ;
 flat in vec2 vCell;
-flat in vec4 vReal, vMc, vPair, vW1, vW2, vW3;
+flat in vec4 vReal, vBlk, vPair, vW1, vW2, vW3;
 out vec4 o;
 
 void main(){
   vec2 q = vQ;
   vec2 uv = (vCell + q) / uGrid;
-  float wPoint = vW1.x, kg = vW1.y, fill = vW1.z, cube = vW1.w;
-  float st = vW2.x, win = vW2.y, ph = vW2.w;
+  float G = vW1.y, fill = vW1.z, cube = vW1.w;
+  float st = vW2.x, win = vW2.y;
 
-  // ---- the cell as an 8-bit pixel, then as a lit cube
-  vec3 cR = mix(pal(vivid(vReal.rgb), vCell), floor(vivid(vReal.rgb) * 9. + .5) / 9., cube);
+  // ---- the cell as a pixel: a flat warm tile, lit from the top left
+  vec3 pixc = q9(warm(vReal.rgb));
+  pixc *= 1. + .22 * max(step(q.x, .12), step(q.y, .12)) - .30 * max(step(.88, q.x), step(.88, q.y));
+  pixc *= .93 + .14 * h21(vCell);
+
+  // ---- as a lit cube
+  vec3 cR = floor(vivid(vReal.rgb) * 9. + .5) / 9.;
   float lumC = dot(vReal.rgb, LUMA);
   float tl = max(step(q.x, .15), step(q.y, .15)), br = max(step(.85, q.x), step(.85, q.y));
   float hgt = h21(vCell + 21.) * .55 + lumC * .45;
   float hUp = h21(vCell + vec2(-1., -1.) + 21.) * .55;
-  vec3 col = cR * (1. + cube * (.12 * h21(vCell) - .06));
-  col *= 1. + (.22 * tl * (1. - br) - .30 * br) * 1.3 * cube;
-  col *= 1. + cube * ((hgt - .45) * .5 - .28 * smoothstep(.0, .35, hUp - hgt * .55) * smoothstep(.5, .0, min(q.x, q.y)));
-  float face = 1. - cube * (.12 + .14 * hgt);
+  vec3 cubec = cR * (1.06 - .12 * h21(vCell));
+  cubec *= 1. + (.22 * tl * (1. - br) - .30 * br) * 1.3;
+  cubec *= 1. + (hgt - .45) * .5 - .28 * smoothstep(.0, .35, hUp - hgt * .55) * smoothstep(.5, .0, min(q.x, q.y));
+  float face = 1. - (.12 + .14 * hgt);
   float sideR = step(face, q.x) * step(q.y - face, q.x - face), sideB = step(face, q.y) * (1. - sideR);
-  col *= 1. - cube * (sideR * .42 + sideB * .62);
+  cubec *= 1. - (sideR * .42 + sideB * .62);
+
+  vec3 col = mix(pixc, cubec, cube);
   float near = length((uv - uPtr) * vec2(ASPECT, 1.));
   col *= 1. + smoothstep(.09, 0., near) * (1. - st) * .45;
   float cov = 1.;
   // cells drop out one by one where the picture runs out, so no state ends in a straight cut
   float alpha = step(vW3.x * .7 + .15, vReal.a);
 
-  // ---- as a character: two stacked cells share one
-  if (kg > .001){
+  // ---- as part of a block: the voxels grown up. One flat colour a block, a 2 by 2 of texels in every cell, light from the top left
+  if (st > .001){
+    vec2 bq = (mod(vCell, uBlk) + q) / uBlk;
+    float e = .5 / uBlk;
+    float btl = max(step(bq.x, e), step(bq.y, e)), bbr = max(step(1. - e, bq.x), step(1. - e, bq.y));
+    vec3 base = floor(vivid(vBlk.rgb) * 6. + .5) / 6.;
+    float tn = h21(floor(vCell / uBlk) * 7.3 + floor(bq * uBlk * 2.));
+    vec3 bc = floor(base * (.84 + .3 * tn) * 14. + .5) / 14.;
+    bc *= 1. + .2 * btl * (1. - bbr) - .26 * bbr;
+    col = mix(col, bc, st);
+    alpha = mix(alpha, step(.5, vBlk.a), st);
+  }
+  col *= 1. + vW2.w * .5;
+
+  // ---- as a character: two stacked cells share one. On the light page the ink runs the other way
+  if (G > .001){
     float l = vPair.a;
-    float idx = floor(l * (uGlyphN - 1.) + .5);
+    float idx = floor(mix(l, 1.04 - l, uLight) * (uGlyphN - 1.) + .5);
     vec2 pc = vec2(vCell.x, floor(vCell.y * .5));
     if (h21(pc + floor(uTime * 7.)) > .99) idx = floor(h21(pc + uTime) * uGlyphN);
-    idx += uGlyphN * (1. - vW2.z);   // numbers first, then symbols
+    idx = clamp(idx, 0., uGlyphN - 1.) + uGlyphN * (1. - vW2.z);   // numbers first, then symbols
     vec2 gq = vec2(clamp(q.x, 0., 1.), (clamp(q.y, 0., 1.) + mod(vCell.y, 2.)) * .5);
     vec2 at = texture(uAtlas, vec2((idx + gq.x * .94 + .03) / (uGlyphN * 2.), gq.y)).rg;
     float swell = smoothstep(.5 - fill * .7, .58 - fill * .7, at.g);
     float gc = max(mix(at.r, swell, smoothstep(0., .2, fill)), smoothstep(.5, 1., fill));
     gc *= mix(step(.03, l), 1., fill);
     vec3 gcol = mix(BONE, vivid(vPair.rgb) * 2.1, .5) * (.7 + .66 * l);
+    gcol = mix(gcol, mix(vec3(.05, .06, .13), vivid(vPair.rgb) * .6, .42), uLight);
     float scan = (uv.y - fract(uTime * .06) * .7) * 26.;
-    gcol *= 1. + .9 * exp(-scan * scan) * (1. - fill);
-    col = mix(col, mix(gcol, col, smoothstep(.0, .42, fill)), kg);
-    cov = mix(cov, gc, kg * (1. - smoothstep(.95, 1., fill)));
+    gcol = mix(gcol * (1. + .9 * exp(-scan * scan) * (1. - fill)), mix(gcol, DEEP, .7 * exp(-scan * scan) * (1. - fill)), uLight);
+    col = mix(col, mix(gcol, col, smoothstep(.0, .42, fill)), G);
+    cov = mix(cov, gc, G * (1. - smoothstep(.95, 1., fill)));
+    alpha = mix(alpha, step(vW3.x * .7 + .15, vReal.a), G * (1. - fill));
   }
 
-  // ---- as part of a Minecraft block: the cells are its texels
-  if (st > .001){
-    vec2 bq = (mod(vCell, uBlk) + q) / uBlk;
-    float e = .34 / uBlk;
-    float btl = max(step(bq.x, e), step(bq.y, e)), bbr = max(step(1. - e, bq.x), step(1. - e, bq.y));
-    vec3 bc = vMc.rgb * (.93 + .14 * h21(vCell + 40.)) * (.95 + .1 * h21(floor(vCell / uBlk) + 11.));
-    bc *= 1. + .2 * btl * (1. - bbr) - .26 * bbr;
-    col = mix(col, bc, st);
-    alpha = mix(alpha, step(.5, vMc.a), st);
-  }
-  col *= 1. + vW3.y * .5;
-
-  // ---- as a free point of light
-  if (wPoint > .001){
-    float disc = smoothstep(1., .12, length(vP));
-    vec3 pcol = (vivid(vReal.rgb) * .95 + vec3(.05, .07, .16)) * (.5 + .7 * lumC);
-    col = mix(col, pcol, wPoint);
-    cov = mix(cov, disc, wPoint);
-    alpha = mix(alpha, smoothstep(.3, .6, vReal.a) * vW3.z, wPoint);
-  }
-
-  // ---- as a window on a picture: the Minecraft build, then the photograph
+  // ---- as a window on the photograph
   float a = alpha * cov;
   float edge = 1. - smoothstep(uBust - .075, uBust, uv.y);
   float edgeCell = step(vW3.x, 1. - smoothstep(uBust - .12, uBust, (floor(vCell.y * .5) * 2. + 1.) / uGrid.y));
-  win *= 1. - wPoint;
   if (win > .001){
-    vec4 m = texP(uMc, uv, uLod);
-    vec3 wc = m.rgb;
-    float wa = m.a;
-    if (ph > .5){
-      vec4 rl = texP(uReal, uv, uLod);
-      wc = rl.rgb; wa = rl.a;
-      // the finished photograph is still pixels under the pointer
-      win *= 1. - .92 * smoothstep(.075, .03, near + (vW3.x - .5) * .03);
-    }
-    col = mix(col, wc, win);
-    a = mix(a, wa, win);
+    vec4 rl = texP(uReal, uv, uLod);
+    // the finished photograph is still pixels under the pointer
+    win *= 1. - .92 * smoothstep(.075, .03, near + (vW3.x - .5) * .03);
+    col = mix(col, rl.rgb, win);
+    a = mix(a, rl.a, win);
   }
   a *= mix(edgeCell, edge, win);
-  a *= smoothstep(0., .04, uv.x) * smoothstep(1., .96, uv.x);
-  o = vec4(col * a, a * (1. - wPoint * .55));
+  a *= smoothstep(0., .04, uv.x) * smoothstep(1., .96, uv.x) * vW1.x;
+  o = vec4(col * a, a);
 }`;
 
 const QUAD_VS = `#version 300 es
@@ -281,7 +242,7 @@ void main(){
   vec2 px = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);
   vec2 uv = (px - uCenter) / vec2(uScale * ASPECT, uScale) + .5;
   vec2 gq = (uv - vec2(.5, .36)) * vec2(ASPECT * 1.45, 1.);
-  o = vec4(mix(DEEP, BLUE, .35), 1.) * .10 * uGlow * exp(-dot(gq, gq) * 6.5);
+  o = vec4(mix(DEEP, BLUE, .35), 1.) * mix(.10, .05, uLight) * uGlow * exp(-dot(gq, gq) * 6.5);
 }`;
 
 // The melt, drawn on the same cell grid as he is: a skirt of stretched pixels under the cut,
@@ -309,7 +270,7 @@ void main(){
       float root = floor(cutLine(u) * rows + .5);   // first row the melt has taken in this column
       vec4 above = texP(uReal, vec2(u, (root - 1.5) / rows), uCellLod);
       if (above.a < .5 || root > floorRow - 4.) continue;
-      vec3 tone = vivid(above.rgb);
+      vec3 tone = warm(above.rgb);
       float ext = floor((.6 + uMelt * (1. + 3.5 * seed(j, 1.))) * keep);
       float top = root + ext, reach = floorRow - 1. - top;
       float r = cell.y;
@@ -341,7 +302,7 @@ void main(){
         if (splash == 0. && abs(d) == 1. && r == floorRow - 1.) shade = 1.35;
         if (splash == 1. && ((abs(d) == 2. && r == floorRow - 2.) || (d == 0. && r == floorRow - 1.))) shade = 1.2;
       }
-      if (shade > 0.){ col = pal(tone * shade + vec3(.01, .015, .04), cell); hit = 1.; }
+      if (shade > 0.){ col = q9(tone * shade + vec3(.01, .015, .04)); hit = 1.; }
     }
   }
 
@@ -353,20 +314,20 @@ void main(){
     float w = floor(halfW * (.55 + .45 * prof)) - floor(3. * h11(k * 7. + sign(cell.x - mid)));
     if (abs(cell.x - mid) <= w){
       float pu = .5 + (cell.x - mid) / uGrid.x * .55;
-      vec3 pool = vivid(texP(uReal, vec2(pu, .625), uCellLod + 1.5).rgb) * (.5 + .16 * k / tall);
+      vec3 pool = warm(texP(uReal, vec2(pu, .625), uCellLod + 1.5).rgb) * (.5 + .16 * k / tall);
       float glint = step(.86, h21(vec2(cell.x + floor(T * 1.5), k))) * step(k, .5);
-      col = pal(pool + glint * .4 + vec3(.0, .01, .04), cell); hit = 1.;
+      col = q9(pool + glint * .4 + vec3(.0, .01, .04)); hit = 1.;
     }
   }
-  // the floor: one dim dithered row, brightest under him
+  // the floor: one dim dotted row, brightest under him
   if (hit < .5 && cell.y == floorRow + tall && mod(cell.x, 2.) < 1.){
     float f = exp(-pow((uv.x - .5) / .36, 2.));
-    col = DEEP * .22 * f; hit = step(.25, f);
+    col = mix(DEEP * .22, DEEP * 1.6, uLight) * f; hit = step(.25, f);
   }
   o = vec4(col, 1.) * hit * uLiquid;
 }`;
 
-// loose cubes: small while he is pixels, block sized while he is Minecraft. Ray-traced boxes.
+// loose cubes: small while he is pixels, block sized in the Kiwi chapter. Ray-traced boxes.
 const FLOAT_VS = COMMON + `
 layout(location = 0) in vec2 aCorner;
 layout(location = 1) in vec4 aA;   // home u, home v, depth, seed
@@ -397,7 +358,7 @@ void main(){
   vec2 px = uCenter + (c - .5) * vec2(uScale * ASPECT, uScale) + aCorner * size * uScale;
   gl_Position = vec4(px.x / uRes.x * 2. - 1., 1. - px.y / uRes.y * 2., 0., 1.);
   vP = aCorner; vA = aA; vB = aB; vLife = life * (.5 + .5 * depth);
-  vec3 photo = vivid(texP(uReal, vec2(aA.x, cutLine(aA.x) - .04), 4.).rgb);
+  vec3 photo = warm(texP(uReal, vec2(aA.x, cutLine(aA.x) - .04), 4.).rgb);
   vec3 pick = aB.y < .5 ? DEEP * 1.25 : aB.y < .78 ? vec3(.80, .62, .42) : BONE;
   vCol = aB.z > .5 ? photo : pick;
 }`;
@@ -497,7 +458,7 @@ async function glyphAtlas() {
 }
 
 // every cell that any version of him covers, each split into sub by sub movable pieces
-function buildCells(images, cols, sub) {
+function buildCells(images, cols, sub, grow) {
   const rows = Math.round(cols / ASPECT), used = Math.ceil(rows * VMAX);
   const c = document.createElement('canvas');
   c.width = cols; c.height = used;
@@ -513,7 +474,7 @@ function buildCells(images, cols, sub) {
   const keep = [];
   for (let j = used - 1; j >= 0; j--) for (let i = 0; i < cols; i++) {
     let on = 0;
-    for (let dj = -1; dj <= 1 && !on; dj++) for (let di = -1; di <= 1 && !on; di++) {
+    for (let dj = -grow; dj <= grow && !on; dj++) for (let di = -grow; di <= grow && !on; di++) {
       const ii = i + di, jj = j + dj;
       if (ii >= 0 && jj >= 0 && ii < cols && jj < used && any[jj * cols + ii]) on = 1;
     }
@@ -553,12 +514,12 @@ export async function createStage(canvas) {
   if (!gl) return null;
   const cellProg = program(gl, CELL_VS, CELL_FS), backProg = program(gl, QUAD_VS, BACK_FS);
   const meltProg = program(gl, QUAD_VS, MELT_FS), floatProg = program(gl, FLOAT_VS, FLOAT_FS);
-  const [real, mc, atlas] = await Promise.all([loadImage('assets/stage/real.jpg'), loadImage('assets/stage/mc.jpg'), glyphAtlas()]);
-  texture(gl, 0, real, true); texture(gl, 1, mc, true); texture(gl, 2, atlas, false);
+  const [real, atlas] = await Promise.all([loadImage('assets/stage/real.jpg'), glyphAtlas()]);
+  texture(gl, 0, real, true); texture(gl, 1, atlas, false);
 
   const small = matchMedia('(max-width: 820px)').matches;
   const cols = small ? 72 : 104, sub = small ? 2 : 3, blk = small ? 2 : 3;
-  const grid = buildCells([real, mc], cols, sub);
+  const grid = buildCells([real], cols, sub, blk);
   const cellVao = instanced(gl, [grid.cell, grid.seed]);
 
   const fa = new Float32Array(FLOATERS * 4), fb = new Float32Array(FLOATERS * 4);
@@ -572,11 +533,11 @@ export async function createStage(canvas) {
 
   const view = {
     cx: 0.7, cy: 0.61, scale: 1.3, bust: 0.8, glow: 1,
-    melt: 0.28, liquid: 1, drain: 0, disperse: 1, free: 0, gather: 0, snap: 0, glyph: 0, ramp: 0, solid: 0, block: 0, build: 0, scatter: 0, regather: 0, photo: 0,
+    melt: 0.28, liquid: 1, drain: 0, disperse: 1, glyph: 0, ramp: 0, solid: 0, flip: 0, leave: 0, return: 0, photo: 0,
     floaters: 1, big: 0, puddle: 0.3,
   };
   const ptr = { x: 0.1, y: -0.35, tx: 0.1, ty: -0.35 }; // parked off the figure until the pointer moves
-  let dpr = 1, frozenTime = null, running = true;
+  let dpr = 1, frozenTime = null, running = true, light = 0;
   const t0 = performance.now();
 
   function resize() {
@@ -595,10 +556,11 @@ export async function createStage(canvas) {
     gl.uniform1f(u.uCellLod, Math.max(0, Math.log2(1280 / cols) - 0.4));
     gl.uniform1f(u.uCellPx, scale * ASPECT / cols);
     gl.uniform1f(u.uGlyphN, GLYPHS.length); gl.uniform1f(u.uBust, view.bust); gl.uniform1f(u.uSmall, small ? 1 : 0); gl.uniform1f(u.uBlk, blk);
-    for (const k of ['melt', 'liquid', 'drain', 'disperse', 'free', 'gather', 'snap', 'glyph', 'ramp', 'solid', 'block', 'build', 'scatter', 'regather', 'photo']) {
+    for (const k of ['melt', 'liquid', 'drain', 'disperse', 'glyph', 'ramp', 'solid', 'flip', 'leave', 'return', 'photo']) {
       gl.uniform1f(u['u' + k[0].toUpperCase() + k.slice(1)], view[k]);
     }
-    gl.uniform1i(u.uReal, 0); gl.uniform1i(u.uMc, 1); gl.uniform1i(u.uAtlas, 2);
+    gl.uniform1f(u.uLight, light);
+    gl.uniform1i(u.uReal, 0); gl.uniform1i(u.uAtlas, 1);
   }
 
   function frame(now) {
@@ -657,6 +619,7 @@ export async function createStage(canvas) {
     place(u, v) { const s = view.scale * innerHeight; return [view.cx * innerWidth + (u - 0.5) * s * ASPECT, view.cy * innerHeight + (v - 0.5) * s]; },
     setRunning(on) { if (on && !running) { running = true; requestAnimationFrame(frame); } else if (!on) running = false; },
     setMotion(on) { frozenTime = on ? null : 12.5; },
+    setLight(on) { light = on ? 1 : 0; },
   };
   document.addEventListener('visibilitychange', () => api.setRunning(!document.hidden));
   requestAnimationFrame(frame);

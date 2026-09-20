@@ -13,6 +13,7 @@
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
+    <script>(function(){var t;try{t=localStorage.getItem('theme')}catch(e){}if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.dataset.theme=t})()</script>
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
     <link rel="preload" href="fonts/SpaceGrotesk-wght.ttf" as="font" type="font/ttf" crossorigin>
     <link rel="preload" href="fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
@@ -43,21 +44,22 @@
         <a href="#about">The person</a>
         <a href="assets/Aryan-Mehta-Resume.pdf" target="_blank" rel="noopener">Résumé</a>
         <a class="nav-contact" href="#contact">Let’s talk</a>
+        <button class="theme-toggle" id="theme-toggle" type="button">Light</button>
       </nav>
     </header>
 
     <main id="main">
-      <section class="chapter hero" id="top" data-state="pixels" data-side="left" data-form="in pixels" data-note="What is Aryan made of?" aria-labelledby="hero-title">
+      <section class="chapter hero" id="top" data-state="pixels" data-side="left" data-rail="Aryan" data-note="What is Aryan made of?" aria-labelledby="hero-title">
         <div class="copy">
           <h1 id="hero-title"><span>Aryan</span><span>Mehta.</span></h1>
           <p class="lede">Deep in the technology.<br>Closer to the people.</p>
           <p class="body">I build products, lead teams, and stay close to the problems worth solving. Every project rebuilt me a little.</p>
-          <a class="scroll-link" href="#story">Seven versions of one person <span aria-hidden="true">↓</span></a>
+          <a class="scroll-link" href="#story">The work so far <span aria-hidden="true">↓</span></a>
           <p class="chips" aria-hidden="true"><i></i><i></i><i></i><i></i></p>
         </div>
       </section>
 
-      <section class="chapter" id="story" data-state="melt" data-side="right" data-form="melting" data-note="First, pixels. They would not hold still." aria-labelledby="intro-title">
+      <section class="chapter" id="story" data-state="melt" data-side="right" data-rail="Context" data-note="An engineer’s training." aria-labelledby="intro-title">
         <div class="copy">
           <p class="label">A little context</p>
           <h2 id="intro-title">The interesting part is where the disciplines meet.</h2>
@@ -73,7 +75,7 @@
         </div>
       </section>
 
-      <section class="chapter style-signal" id="forecast" data-state="ascii" data-side="left" data-form="in characters" data-note="Then numbers." aria-labelledby="forecast-title">
+      <section class="chapter style-signal" id="forecast" data-state="ascii" data-side="left" data-rail="Forecasting" data-note="Five weeks of warning." aria-labelledby="forecast-title">
         <div class="copy">
           <p class="label">Prognosis & Harvard / Disease forecasting</p>
           <h2 id="forecast-title">A head start can change what’s next.</h2>
@@ -97,12 +99,12 @@
         </div>
       </section>
 
-      <section class="chapter style-ascii" id="research" data-state="ascii" data-side="right" data-form="in characters" data-note="Then characters." aria-labelledby="privacy-title">
+      <section class="chapter style-ascii" id="research" data-state="ascii" data-side="right" data-rail="MIT" data-note="One stubborn question." aria-labelledby="privacy-title">
         <div class="copy">
           <p class="label">MIT / AI privacy research</p>
           <h2 id="privacy-title">A private chat. An unexpected audience.</h2>
           <p class="body">What happens beyond the chat window? I led a research team tracing network traffic from commercial AI tools to find out.</p>
-          <p class="body">The study found that 9–36% of captured requests from four platforms went to third-party domains, raising questions about AI use in healthcare.</p>
+          <p class="body">The study found that 9-36% of captured requests from four platforms went to third-party domains, raising questions about AI use in healthcare.</p>
           <figure class="asset asset-ascii">
             <div class="object-slot wide" data-slot="packets"></div>
             <pre id="ascii-chart" aria-label="Third-party request rates in the 2025 study: Grok 35.9%, Claude 14.0%, ChatGPT 13.7%, Gemini 9.0%"></pre>
@@ -113,7 +115,7 @@
         </div>
       </section>
 
-      <section class="chapter style-voxel" id="engineering" data-state="voxels" data-side="left" data-form="in voxels" data-note="Then parts you can weigh." aria-labelledby="capstone-title">
+      <section class="chapter style-voxel" id="engineering" data-state="voxels" data-side="left" data-rail="Lockheed" data-note="A rig built for 150 lb." aria-labelledby="capstone-title">
         <div class="copy">
           <p class="label">Penn State × Lockheed Martin / Sponsored capstone</p>
           <h2 id="capstone-title">Back to the nuts. And bolts. And physics.</h2>
@@ -141,7 +143,7 @@
         </div>
       </section>
 
-      <section class="chapter style-blocks" id="kiwi" data-state="minecraft" data-side="right" data-form="in blocks" data-note="Then blocks, one at a time." aria-labelledby="kiwi-title">
+      <section class="chapter style-blocks" id="kiwi" data-state="blocks" data-side="right" data-rail="Kiwi" data-note="368 recorded falls." aria-labelledby="kiwi-title">
         <div class="copy">
           <p class="label">Kiwi Senior Health / Product & machine learning</p>
           <h2 id="kiwi-title">A little watch. A lot riding on it.</h2>
@@ -172,7 +174,7 @@
         </div>
       </section>
 
-      <section class="chapter summary" id="about" data-state="felt" data-side="centre" data-anchor="top" data-form="in felt" data-note="Mostly, other people." aria-labelledby="about-title">
+      <section class="chapter summary" id="about" data-state="felt" data-side="centre" data-anchor="top" data-rail="The person" data-note="Mostly, other people." aria-labelledby="about-title">
         <div class="summary-first">
           <div class="summary-head">
             <p class="label">The person behind the projects</p>
@@ -195,11 +197,11 @@
         <div class="table-scene" id="table-scene" role="group" aria-label="Everything on this page, gathered around him. Choose one to open it."></div>
       </section>
 
-      <section class="chapter contact" id="contact" data-state="photo" data-side="left" data-form="in person" data-note="Still a work in progress." aria-labelledby="contact-title">
+      <section class="chapter contact" id="contact" data-state="photo" data-side="left" data-rail="Contact" data-note="Still a work in progress." aria-labelledby="contact-title">
         <div class="copy">
           <p class="label">Ready for the next hard problem</p>
           <h2 id="contact-title">Let’s make it matter.</h2>
-          <p class="body">Every version on this page was the best one at the time. The next one starts with a conversation.</p>
+          <p class="body">Every project here taught me something the last one could not. The next one starts with a conversation.</p>
           <a class="email-link" href="mailto:mehtaaryan1999@gmail.com">mehtaaryan1999@gmail.com</a>
           <div class="contact-links">
             <a href="https://www.linkedin.com/in/aryanmehta2004/" target="_blank" rel="noopener noreferrer">LinkedIn <span aria-hidden="true">↗</span></a>
@@ -213,7 +215,7 @@
       </section>
     </main>
 
-    <nav class="rail" id="rail" aria-label="Versions of Aryan"></nav>
+    <nav class="rail" id="rail" aria-label="Chapters"></nav>
     <aside class="shelf" id="shelf" aria-label="Things he made"></aside>
 
     <dialog class="story-dialog" id="story-dialog" aria-labelledby="dialog-title">
@@ -261,7 +263,7 @@
       </div>
     </template>
     <template id="story-privacy">
-      <p class="label">MIT / Research project / January 2024–May 2025</p>
+      <p class="label">MIT / Research project / January 2024 to May 2025</p>
       <h2 id="dialog-title">What leaves<br>the chat window?</h2>
       <p class="dialog-lede">Not a Private Consultation: Third-Party Network Traffic in Commercial LLMs.</p>
       <div class="dialog-evidence">
@@ -270,7 +272,7 @@
           <span>Captured HTTP / HTTPS requests</span>
         </div>
         <div>
-          <b>9–36%</b>
+          <b>9-36%</b>
           <span>Third-party request rates across four platforms</span>
         </div>
       </div>
@@ -350,9 +352,9 @@
       <h2 id="dialog-title">The path<br>so far.</h2>
       <p class="dialog-lede">Five years, four institutions, and a scope that kept growing.</p>
       <ol class="path">
-        <li><time>2021–2025</time><b>Penn State</b><span>Computer engineering</span></li>
-        <li><time>2024–2025</time><b>MIT & Harvard</b><span>AI privacy & digital health research</span></li>
-        <li><time>2024–2025</time><b>Prognosis</b><span>Founder & product manager</span></li>
+        <li><time>2021-2025</time><b>Penn State</b><span>Computer engineering</span></li>
+        <li><time>2024-2025</time><b>MIT & Harvard</b><span>AI privacy & digital health research</span></li>
+        <li><time>2024-2025</time><b>Prognosis</b><span>Founder & product manager</span></li>
         <li><time>Joined 2024</time><b>Kiwi Senior Health</b><span>Founding product manager</span></li>
         <li><time>July 2026</time><b>A wider responsibility</b><span>Stepped into interim co-CEO scope</span></li>
       </ol>

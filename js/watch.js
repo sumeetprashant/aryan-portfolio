@@ -45,7 +45,9 @@ export function createWatch(canvas) {
   const scene = new THREE.Scene();
   scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
   scene.environmentIntensity = 0.7;
-  const camera = new THREE.PerspectiveCamera(30, 0.8, 0.1, 40);
+  // the canvas is 1.8 times the button it sits on (journey.css), so the view is 1.8 times wider at the same distance:
+  // the watch keeps its size and perspective, and the strap has room to swing through a full tumble without being cut
+  const camera = new THREE.PerspectiveCamera(51.5, 0.8, 0.1, 40);
   camera.position.set(0, 0, 7.4);
   const key = new THREE.DirectionalLight('#fff4e6', 2.6); key.position.set(4, 5, 6); scene.add(key);
   const rim = new THREE.DirectionalLight('#7b93f5', 3.4); rim.position.set(-6, 2, -4); scene.add(rim);

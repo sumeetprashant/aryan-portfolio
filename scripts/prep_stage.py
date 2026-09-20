@@ -23,16 +23,12 @@ OUT_W, OUT_H = 1280, 1500              # stored band: v in [0, VMAX)
 S = OUT_W / W
 VMAX = OUT_H / (H * S)                 # 0.78125, mirrored in js/stage.js
 PROFILE = 'Aryan-Mehta-Website-and-Data/profile-and-resume/'
-PACK = 'pack/02_portrait_style_assets/'
 SOURCES = {
     # the relit headshot is the base photo for every procedural state and the final frame
     'real': (PROFILE + 'relit-headshot.jpg', (495, 426), (664, 445)),
-    # Minecraft: the pupils look inward, so the eye centres (white to white) are the registration points
-    'mc': (PROFILE + '0more-imgs/minecraft-portrait.png', (512, 487), (726, 512)),
 }
-# the summary's still: the felt character, centred in the same 3:2 frame the head-turn clip will use
-FELT = (PACK + 'handcrafted_felt_portrait_in_navy_suit.png', (690, 372), (872, 396))
-PAGE_BG = (14, 11, 10)                 # #0a0b0e in BGR
+# the summary's still: the cartoon felt character, cut out of his mock-up page. Pupil centres as eye points.
+FELT = (PROFILE + '0more-imgs/ChatGPT Image Sep 20, 2026, 07_07_15 PM.png', (700, 400), (868, 420))
 
 
 def similarity(src_l, src_r, scale=1.0):
@@ -81,62 +77,78 @@ def matte_grabcut(img, valid):
     return cv2.resize(fg, (W, H), interpolation=cv2.INTER_LINEAR)
 
 
-def refine_dark_backdrop(canon, hard):
-    """The Minecraft render sits on a dark neutral backdrop that GrabCut cannot tell from navy
-    block. Below the chin, keep only what is blue (Lab b), bright (shirt), or the neck column."""
-    lab = cv2.cvtColor(canon, cv2.COLOR_BGR2LAB).astype(np.int16)
-    L, b = lab[..., 0], lab[..., 2]
-    ys, xs = np.mgrid[0:H, 0:W]
-    keep = (b < 119) | (L > 150) | (np.abs(xs - W * 0.5) < W * 0.12)
-    out = np.where((ys < H * 0.478) | keep, hard, 0).astype(np.uint8)
-    out = cv2.morphologyEx(out, cv2.MORPH_OPEN, np.ones((7, 7), np.uint8))
-    out = cv2.morphologyEx(out, cv2.MORPH_CLOSE, np.ones((15, 15), np.uint8))
-    n, labels, stats, _ = cv2.connectedComponentsWithStats(out)
-    if n > 1:
-        out = np.where(labels == 1 + np.argmax(stats[1:, cv2.CC_STAT_AREA]), 255, 0).astype(np.uint8)
-    return out
-
-
 def felt_still():
-    """site/assets/felt-still.webp: the felt character cut from his grey backdrop, centred in a
-    1536x1024 frame with the bust running off the bottom edge. The summary shows it until the
-    head-turn clip (site/assets/felt-look.mp4, same framing) exists."""
+    """site/assets/felt-still.webp: the felt character matted off the cream mock-up he was drawn on
+    (handwriting, tape and arrows all sit outside his silhouette), centred in a 1536x1024 frame with
+    the bust running off the bottom edge. The summary shows it until the head-turn clip
+    (site/assets/felt-look.mp4, same framing) exists."""
     src = cv2.imread(FELT[0])
     h, w = src.shape[:2]
     small = cv2.resize(src, (w // 2, h // 2), interpolation=cv2.INTER_AREA)
     mask = np.full(small.shape[:2], cv2.GC_PR_BGD, np.uint8)
     cx = int((FELT[1][0] + FELT[2][0]) / 4)
-    cv2.ellipse(mask, (cx, 190), (120, 170), 0, 0, 360, cv2.GC_PR_FGD, -1)
-    cv2.rectangle(mask, (cx - 300, 400), (cx + 300, h // 2), cv2.GC_PR_FGD, -1)
-    cv2.ellipse(mask, (cx, 200), (70, 110), 0, 0, 360, cv2.GC_FGD, -1)
-    cv2.rectangle(mask, (cx - 60, 450), (cx + 60, h // 2), cv2.GC_FGD, -1)
-    mask[:10, :] = cv2.GC_BGD
-    mask[:330, :40] = cv2.GC_BGD
-    mask[:330, -40:] = cv2.GC_BGD
-    cv2.grabCut(small, mask, None, np.zeros((1, 65)), np.zeros((1, 65)), 6, cv2.GC_INIT_WITH_MASK)
+    cv2.ellipse(mask, (cx, 195), (135, 165), 0, 0, 360, cv2.GC_PR_FGD, -1)
+    cv2.fillPoly(mask, [np.int32([[cx - 95, 340], [cx + 95, 340], [cx + 215, 440], [cx + 225, 511], [cx - 255, 511], [cx - 225, 450]])], cv2.GC_PR_FGD)
+    cv2.ellipse(mask, (cx, 210), (85, 110), 0, 0, 360, cv2.GC_FGD, -1)
+    cv2.rectangle(mask, (cx - 110, 420), (cx + 110, 511), cv2.GC_FGD, -1)
+    # the page furniture is never him: margins, the tape label, the notes on the right
+    mask[:14, :] = cv2.GC_BGD
+    mask[:, :120] = cv2.GC_BGD
+    mask[:, 640:] = cv2.GC_BGD
+    mask[:330, :235] = cv2.GC_BGD
+    mask[:400, 545:] = cv2.GC_BGD
+    cv2.grabCut(small, mask, None, np.zeros((1, 65)), np.zeros((1, 65)), 8, cv2.GC_INIT_WITH_MASK)
     fg = np.where((mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD), 255, 0).astype(np.uint8)
+    fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
     n, labels, stats, _ = cv2.connectedComponentsWithStats(fg)
     if n > 1:
         fg = np.where(labels == 1 + np.argmax(stats[1:, cv2.CC_STAT_AREA]), 255, 0).astype(np.uint8)
+    inv = cv2.bitwise_not(fg)
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(inv)
+    for i in range(1, n):
+        x, y, bw, bh, area = stats[i]
+        if x > 0 and y > 0 and x + bw < fg.shape[1] and y + bh < fg.shape[0]:
+            fg[labels == i] = 255
     hard = cv2.resize(fg, (w, h), interpolation=cv2.INTER_LINEAR)
     hard = np.where(hard > 127, 255, 0).astype(np.uint8)
-    core = cv2.erode(hard, np.ones((9, 9), np.uint8))
-    alpha = cv2.GaussianBlur(cv2.erode(hard, np.ones((5, 5), np.uint8)), (0, 0), 2.2)
-    band = cv2.dilate(hard, np.ones((21, 21), np.uint8)) & cv2.bitwise_not(core)
-    img = cv2.inpaint(src, band, 6, cv2.INPAINT_TELEA)
-    # head centred, eyes a little above the middle, bust cut by the bottom edge
+
+    # felt is fuzzy: inside a band round the cut, alpha is how far each pixel sits from the paper
+    # behind it, and the paper's share is taken back out of the colour so no cream fringe is left
+    f = src.astype(np.float32)
+    paper_mask = (cv2.dilate(hard, np.ones((41, 41), np.uint8)) == 0).astype(np.float32)
+    paper = cv2.GaussianBlur(f * paper_mask[..., None], (0, 0), 45) / np.maximum(cv2.GaussianBlur(paper_mask, (0, 0), 45), 1e-3)[..., None]
+    dist = np.linalg.norm(cv2.cvtColor(src, cv2.COLOR_BGR2LAB).astype(np.float32) - cv2.cvtColor(np.clip(paper, 0, 255).astype(np.uint8), cv2.COLOR_BGR2LAB).astype(np.float32), axis=2)
+    soft = np.clip((dist - 14) / 30, 0, 1)
+    soft = soft * soft * (3 - 2 * soft)
+    core = cv2.erode(hard, np.ones((15, 15), np.uint8)).astype(np.float32) / 255
+    reach = cv2.GaussianBlur(cv2.dilate(hard, np.ones((7, 7), np.uint8)), (0, 0), 2).astype(np.float32) / 255
+    alpha = np.maximum(core, np.minimum(soft, reach))
+    # the tape label touches his left shoulder; it is yellow where he is navy, so it goes by colour
+    lab_b = cv2.cvtColor(src, cv2.COLOR_BGR2LAB)[..., 2]
+    tape = np.zeros((h, w), bool)
+    tape[690:, :460] = cv2.dilate((lab_b[690:, :460] > 133).astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
+    alpha = np.where(tape, 0, alpha)
+    clean = (f - (1 - alpha[..., None]) * paper) / np.maximum(alpha[..., None], .08)
+    clean = np.where(alpha[..., None] > .02, np.clip(clean, 0, 255), 0).astype(np.uint8)
+    # loose fibres take the colour of the felt just inside them, so the fuzz never reads as a pale rim
+    band = cv2.dilate(hard, np.ones((21, 21), np.uint8)) & cv2.bitwise_not(cv2.erode(hard, np.ones((11, 11), np.uint8)))
+    inner = cv2.inpaint(src, band, 7, cv2.INPAINT_TELEA)
+    k = np.clip((alpha - .45) / .5, 0, 1)[..., None]
+    clean = (inner * (1 - k) + clean * k).astype(np.uint8)
+    # a hair of the cut pulled in, so what is left of the paper never shows on the dark page
+    alpha = np.clip(alpha * 1.15 - .15, 0, 1)
+
     FW, FH = 1536, 1024
-    k = FH * 0.97 / h
     ex = (FELT[1][0] + FELT[2][0]) / 2
-    M = np.float32([[k, 0, FW / 2 - ex * k], [0, k, FH - h * k + 2]])
-    rgb = cv2.warpAffine(img, M, (FW, FH), flags=cv2.INTER_AREA, borderValue=PAGE_BG)
-    a = cv2.warpAffine(alpha, M, (FW, FH), flags=cv2.INTER_AREA, borderValue=0)
-    # the source ends in a straight edge left and right of the bust: fade the last stretch out
-    xs = np.where(a.max(axis=0) > 0)[0]
-    side = np.clip(np.minimum(np.arange(FW) - xs.min(), xs.max() - np.arange(FW)) / 150.0, 0, 1)
-    a = (a * (side * side * (3 - 2 * side))[None, :]).astype(np.uint8)
+    M = np.float32([[1, 0, FW / 2 - ex], [0, 1, FH - h]])
+    rgb = cv2.warpAffine(clean, M, (FW, FH), flags=cv2.INTER_LINEAR, borderValue=(0, 0, 0))
+    a = cv2.warpAffine((alpha * 255).astype(np.uint8), M, (FW, FH), flags=cv2.INTER_LINEAR, borderValue=0)
     out = np.dstack([cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB), a])
-    Image.fromarray(out).save('site/assets/felt-still.webp', quality=88, method=6)
+    Image.fromarray(out).save('site/assets/felt-still.webp', quality=90, method=6)
+    os.makedirs('shots', exist_ok=True)
+    for name, bg in (('dark', (14, 11, 10)), ('light', (236, 240, 243))):
+        comp = rgb * (a[..., None] / 255.0) + np.array(bg) * (1 - a[..., None] / 255.0)
+        cv2.imwrite(f'shots/_felt_still_{name}.jpg', comp.astype(np.uint8), [cv2.IMWRITE_JPEG_QUALITY, 92])
     print('felt-still.webp', out.shape)
 
 
@@ -151,8 +163,6 @@ def main():
         canon = cv2.warpAffine(src, similarity(el, er), (W, H), flags=cv2.INTER_AREA, borderValue=(0, 0, 0))
         valid = cv2.warpAffine(np.full(src.shape[:2], 255, np.uint8), similarity(el, er), (W, H), flags=cv2.INTER_NEAREST)
         hard = matte_grabcut(canon, valid)
-        if name == 'mc':
-            hard = refine_dark_backdrop(canon, hard)
 
         big = (OUT_W, int(H * S))
         img = cv2.warpAffine(src, similarity(el, er, S), big, flags=cv2.INTER_CUBIC, borderValue=(0, 0, 0))[:OUT_H]

@@ -5,7 +5,7 @@ import { createStage } from './stage.js';
 document.documentElement.classList.add('js');
 
 const chapters = [...document.querySelectorAll('.chapter')].map((el) => ({
-  el, id: el.id, state: el.dataset.state, side: el.dataset.side, note: el.dataset.note, form: el.dataset.form, anchor: el.dataset.anchor,
+  el, id: el.id, state: el.dataset.state, side: el.dataset.side, note: el.dataset.note, rail: el.dataset.rail, anchor: el.dataset.anchor,
 }));
 const note = document.getElementById('stage-note');
 const rail = document.getElementById('rail');
@@ -13,6 +13,7 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const isSmall = () => innerWidth <= 820;
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const lerp = (a, b, t) => a + (b - a) * t;
+const summaryCopy = document.querySelector('.summary-copy');
 // value at p along a list of [p, value] stops, eased between them
 const along = (p, stops) => {
   if (p <= stops[0][0]) return stops[0][1];
@@ -20,15 +21,12 @@ const along = (p, stops) => {
   return stops[stops.length - 1][1];
 };
 
-// rail: one entry per distinct version
-const seen = new Set();
+// rail: one entry per chapter, named for the work
 for (const c of chapters) {
-  if (seen.has(c.state)) continue;
-  seen.add(c.state);
   const a = document.createElement('a');
   a.href = `#${c.id}`;
-  a.dataset.state = c.state;
-  a.innerHTML = `<span>Aryan, ${c.form}</span>`;
+  a.dataset.id = c.id;
+  a.innerHTML = `<span>${c.rail}</span>`;
   rail.append(a);
 }
 
@@ -62,9 +60,9 @@ function anchor(c) {
   return c.side === 'left' ? x : 1 - x;
 }
 
-// Chapter order is fixed by the page: 0 hero (8-bit pixels), 1 context (the pixel melt), 2 forecasting and
-// 3 MIT (characters: numbers, then symbols), 4 voxels, 5 Minecraft, 6 the felt summary, 7 photograph.
-// Between versions the cells break into points and re-gather. Each change owns a real stretch of scroll.
+// Chapter order is fixed by the page: 0 hero (pixels), 1 context (the pixel melt), 2 forecasting and
+// 3 MIT (characters: numbers, then symbols), 4 cubes, 5 blocks, 6 the summary, 7 the photograph, not quite finished.
+// Every change of form passes through characters. Each change owns a real stretch of scroll.
 function apply(view, real) {
   // on a phone the copy slides up over him, so every change has to finish while he is still in the clear
   const whole = Math.min(chapters.length - 2, Math.floor(real));
@@ -73,23 +71,24 @@ function apply(view, real) {
   view.melt = 0.06 + 0.94 * s(0.2, 0.95) + 0.4 * s(1.08, 1.45);
   view.puddle = s(0.25, 0.95) * (1 - s(1.3, 1.65));
   view.drain = s(1.1, 1.45);
-  view.liquid = 1 - s(1.6, 1.8);
+  view.liquid = 1 - s(1.5, 1.75);
   view.disperse = 1 - s(1.1, 1.4);
-  view.free = s(1.12, 1.5);
-  view.gather = s(1.3, 1.75);
-  view.snap = s(1.55, 1.9);
-  view.glyph = s(1.62, 1.97);
+  view.glyph = s(1.25, 1.95);
   view.ramp = s(2.4, 2.95);
   view.solid = s(3.3, 3.95);
-  view.block = s(4.2, 4.55);
+  view.flip = s(4.2, 4.92);
   view.big = s(4.25, 4.6);
-  view.build = s(4.5, 4.97);
-  view.scatter = s(5.28, 5.8);
-  view.regather = s(6.32, 6.92);
+  view.leave = s(5.3, 5.8);
+  // he comes back only once the summary's copy has left the window, so nothing ever crosses the words
+  const copyEnd = isSmall() ? 0 : (summaryCopy.getBoundingClientRect().bottom - innerHeight * 0.3) / innerHeight;
+  view.return = s(6.3, 6.9) * smooth(0.55, 0.2, copyEnd);
   view.photo = p > 6 ? 1 : 0;
-  view.felt = s(5.6, 5.9) * (1 - s(6.22, 6.45));
+  note.classList.toggle('is-under', !isSmall() && copyEnd > 0.02 && summaryCopy.getBoundingClientRect().top < innerHeight * -0.06);   // the copy is passing under the head line
+  // the summary's character steps back as its copy comes up, and is gone before the words reach him
+  const copyTop = isSmall() ? 1 : summaryCopy.getBoundingClientRect().top / innerHeight;
+  view.felt = s(5.55, 5.85) * (1 - s(6.25, 6.5)) * smooth(0.8, 0.97, copyTop);
   view.floaters = Math.max(1 - s(1.1, 1.4), s(3.7, 3.95)) * (1 - s(5.25, 5.45));
-  view.glow = along(p, [[1.5, 1], [1.95, 2.2], [3.3, 2.2], [3.9, 1], [5.4, 1], [5.8, 0.4], [6.4, 0.4], [6.9, 1]]);
+  view.glow = along(p, [[1.2, 1], [1.9, 2.2], [3.3, 2.2], [3.9, 1], [5.4, 1], [5.8, 0.4], [6.4, 0.4], [6.9, 1]]);
   view.bust = along(p, [[1.3, 0.8], [1.9, 0.68], [4.2, 0.68], [4.7, 0.655], [6.3, 0.655], [6.4, 0.765]]);
 
   const i = whole, f = real - i;
@@ -106,7 +105,7 @@ function apply(view, real) {
     activeNote = near;
     note.classList.remove('is-in');
     setTimeout(() => { note.textContent = chapters[near].note; note.dataset.kind = chapters[near].state; note.classList.add('is-in'); }, 260);
-    for (const a of rail.children) a.toggleAttribute('aria-current', a.dataset.state === chapters[near].state);
+    for (const a of rail.children) a.toggleAttribute('aria-current', a.dataset.id === chapters[near].id);
     document.documentElement.dataset.chapter = chapters[near].id;
     document.documentElement.dataset.copy = chapters[near].side === 'left' ? 'left' : 'right';
   }
@@ -237,6 +236,21 @@ dialog.querySelector('.dialog-close').addEventListener('click', () => dialog.clo
 dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
 dialog.addEventListener('close', () => stage?.setRunning(true));
 
+// light or dark. The inline script in the head has already picked one (saved choice, else the system's)
+const themeToggle = document.getElementById('theme-toggle');
+function setTheme(theme, save) {
+  const light = theme === 'light';
+  document.documentElement.dataset.theme = theme;
+  themeToggle.textContent = light ? 'Dark' : 'Light';
+  themeToggle.setAttribute('aria-label', light ? 'Switch to the dark page' : 'Switch to the light page');
+  document.querySelector('meta[name="theme-color"]').content = light ? '#e6e9f0' : '#0a0b0e';
+  stage?.setLight(light);
+  things?.setTheme(light);
+  if (save) try { localStorage.setItem('theme', theme); } catch { /* private mode: the choice lasts for this visit */ }
+}
+themeToggle.addEventListener('click', () => setTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light', true));
+setTheme(document.documentElement.dataset.theme || 'dark', false);
+
 // motion control
 const toggle = document.getElementById('motion-toggle');
 toggle.addEventListener('click', () => {
@@ -251,6 +265,6 @@ toggle.addEventListener('click', () => {
 if (stage) {
   import('./felt.js').then((m) => { felt = m.createFelt(document.getElementById('felt'), document.getElementById('about'), reduced.matches); }).catch((error) => console.error(error));
   import('./things.js').then((m) => m.createThings({ stage, chapters, openStory, reduced: reduced.matches }))
-    .then((t) => { things = t; things.region(weeks.dataset.kind); })
+    .then((t) => { things = t; things.region(weeks.dataset.kind); things.setTheme(document.documentElement.dataset.theme === 'light'); })
     .catch((error) => console.error(error));
 }

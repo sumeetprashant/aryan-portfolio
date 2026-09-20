@@ -2,7 +2,9 @@
 // as it arrives, and gather around the felt character in the summary, where each one opens its case study.
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const lerp = (a, b, t) => a + (b - a) * t;
-const BLUE = '#7b93f5', DEEP = '#2c45c9', BONE = '#ece9e2', BUTTER = '#f0d264', TAU = Math.PI * 2;
+const BLUE = '#7b93f5', DEEP = '#2c45c9', BONE = '#ece9e2', TAU = Math.PI * 2;
+// what the canvases draw with, swapped when the page goes light (see setTheme)
+const INK = { rgb: '236,233,226', solid: BONE, page: '#0a0b0e', butter: '#f0d264', sage: '185,210,149', light: false };
 
 const DEFS = [
   // table: where it rests around him in the summary, as a fraction of the window
@@ -68,7 +70,7 @@ function makeDrone(thing) {
         if (thing.mode !== 'slot' && Math.abs(th) < 0.2 && Math.abs(om) < 0.2) { th = 0.55; om = 0; }
       }
       const cx = W / 2, cy = H / 2, s = Math.min(W, H) * 0.46, v = s * 0.9 / 17.5;
-      x.strokeStyle = 'rgba(236,233,226,.13)'; x.lineWidth = 1;
+      x.strokeStyle = `rgba(${INK.rgb},${INK.light ? 0.3 : 0.13})`; x.lineWidth = 1;
       x.beginPath(); x.arc(cx, cy, s, 0, TAU); x.stroke();
       x.setLineDash([3, 6]); x.beginPath(); x.moveTo(cx - s, cy); x.lineTo(cx + s, cy); x.stroke(); x.setLineDash([]);
       for (let k = -6; k <= 6; k++) { const a = k * Math.PI / 18; x.beginPath(); x.moveTo(cx + Math.cos(a) * (s - 6), cy + Math.sin(a) * (s - 6)); x.lineTo(cx + Math.cos(a) * s, cy + Math.sin(a) * s); x.stroke(); }
@@ -84,7 +86,7 @@ function makeDrone(thing) {
         x.fillStyle = '#0d1230'; x.fillRect(sx * v - v, -2 * v, 2 * v, 4 * v);
         x.strokeStyle = BLUE; x.lineWidth = 1.2; x.strokeRect(sx * v - v, -2 * v, 2 * v, 4 * v);
       }
-      for (const sx of [-5, 5]) { x.fillStyle = '#0a0b0e'; x.strokeStyle = BLUE; x.lineWidth = 1.6; x.beginPath(); x.arc(sx * v, 0, v * 0.7, 0, TAU); x.fill(); x.stroke(); }
+      for (const sx of [-5, 5]) { x.fillStyle = INK.page; x.strokeStyle = BLUE; x.lineWidth = 1.6; x.beginPath(); x.arc(sx * v, 0, v * 0.7, 0, TAU); x.fill(); x.stroke(); }
       x.restore();
     },
   };
@@ -113,19 +115,20 @@ function makeGlobe() {
       for (const p of pts) {
         const [X, Y, Z] = turn(p); if (Z < -0.15) continue;
         const lit = Math.exp(-Math.pow((X - sweep) / 0.12, 2)), d = 0.25 + 0.75 * Math.max(0, Z);
-        x.fillStyle = `rgba(${Math.round(150 + 86 * lit)},${Math.round(165 + 68 * lit)},${Math.round(215 + 30 * lit)},${(0.22 + 0.6 * d + 0.3 * lit).toFixed(3)})`;
+        x.fillStyle = INK.light ? `rgba(${Math.round(40 - 20 * lit)},${Math.round(62 - 20 * lit)},${Math.round(170 + 30 * lit)},${(0.3 + 0.6 * d + 0.1 * lit).toFixed(3)})`
+          : `rgba(${Math.round(150 + 86 * lit)},${Math.round(165 + 68 * lit)},${Math.round(215 + 30 * lit)},${(0.22 + 0.6 * d + 0.3 * lit).toFixed(3)})`;
         const s = 0.8 + 1.5 * d; x.fillRect(cx + X * R - s / 2, cy - Y * R - s / 2, s, s);
       }
       reg.spots.forEach((p, i) => {
         const [X, Y, Z] = turn(p); if (Z < 0) return;
         const pulse = 0.5 + 0.5 * Math.sin(t * 2.4 - i * 0.9);
-        x.fillStyle = `rgba(185,210,149,${(0.2 + 0.24 * pulse) * Z})`; x.beginPath(); x.arc(cx + X * R, cy - Y * R, 5 + 5 * pulse, 0, TAU); x.fill();
-        x.fillStyle = '#fff'; x.fillRect(cx + X * R - 1.5, cy - Y * R - 1.5, 3, 3);
+        x.fillStyle = `rgba(${INK.sage},${(0.2 + 0.24 * pulse) * Z * (INK.light ? 1.6 : 1)})`; x.beginPath(); x.arc(cx + X * R, cy - Y * R, 5 + 5 * pulse, 0, TAU); x.fill();
+        x.fillStyle = INK.light ? '#10131f' : '#fff'; x.fillRect(cx + X * R - 1.5, cy - Y * R - 1.5, 3, 3);
       });
       // the orbit, and the satellite that feeds the model
-      x.strokeStyle = 'rgba(236,233,226,.16)'; x.lineWidth = 1; x.beginPath(); x.ellipse(cx, cy, R * 1.2, R * 0.34, -0.42, 0, TAU); x.stroke();
+      x.strokeStyle = `rgba(${INK.rgb},${INK.light ? 0.3 : 0.16})`; x.lineWidth = 1; x.beginPath(); x.ellipse(cx, cy, R * 1.2, R * 0.34, -0.42, 0, TAU); x.stroke();
       const a = t * 0.7, ox = Math.cos(a) * R * 1.2, oy = Math.sin(a) * R * 0.34, c = Math.cos(-0.42), s2 = Math.sin(-0.42);
-      if (Math.sin(a) > -0.2 || Math.abs(Math.cos(a)) > 0.8) { x.fillStyle = BONE; x.fillRect(cx + ox * c - oy * s2 - 2.5, cy + ox * s2 + oy * c - 2.5, 5, 5); }
+      if (Math.sin(a) > -0.2 || Math.abs(Math.cos(a)) > 0.8) { x.fillStyle = INK.solid; x.fillRect(cx + ox * c - oy * s2 - 2.5, cy + ox * s2 + oy * c - 2.5, 5, 5); }
     },
   };
 }
@@ -139,9 +142,9 @@ function makePackets() {
       const k = W / 240; x.save(); x.scale(k, k);
       x.font = '700 9px "Space Mono", monospace'; x.textBaseline = 'middle'; x.textAlign = 'center'; x.lineWidth = 1;
       const box = (bx, by, bw, bh, label, col) => { x.strokeStyle = col; x.strokeRect(bx + 0.5, by + 0.5, bw, bh); x.fillStyle = col; x.fillText(label, bx + bw / 2, by + bh / 2 + 1); };
-      box(4, 34, 52, 28, 'chat >_', 'rgba(236,233,226,.88)'); box(84, 34, 58, 28, 'ai tool', 'rgba(236,233,226,.88)');
-      ys.forEach((y, i) => box(174, y - 9, 62, 18, names[i], BUTTER));
-      x.strokeStyle = 'rgba(236,233,226,.22)'; x.setLineDash([2, 3]);
+      box(4, 34, 52, 28, 'chat >_', `rgba(${INK.rgb},.88)`); box(84, 34, 58, 28, 'ai tool', `rgba(${INK.rgb},.88)`);
+      ys.forEach((y, i) => box(174, y - 9, 62, 18, names[i], INK.butter));
+      x.strokeStyle = `rgba(${INK.rgb},${INK.light ? 0.4 : 0.22})`; x.setLineDash([2, 3]);
       x.beginPath(); x.moveTo(57, 48); x.lineTo(84, 48); x.stroke();
       for (const y of ys) { x.beginPath(); x.moveTo(143, 48); x.lineTo(158, 48); x.lineTo(158, y); x.lineTo(174, y); x.stroke(); }
       x.setLineDash([]);
@@ -153,7 +156,7 @@ function makePackets() {
         let px, py = 48;
         if (p.t < 1) px = lerp(57, 84, p.t);
         else { const u = (p.t - 1) / 0.65, y = ys[p.third - 1]; if (u < 0.33) px = lerp(143, 158, u / 0.33); else if (u < 0.66) { px = 158; py = lerp(48, y, (u - 0.33) / 0.33); } else { px = lerp(158, 174, (u - 0.66) / 0.34); py = y; } }
-        x.fillStyle = p.t >= 1 ? BUTTER : BONE; x.fillRect(px - 1.5, py - 1.5, 3, 3);
+        x.fillStyle = p.t >= 1 ? INK.butter : INK.solid; x.fillRect(px - 1.5, py - 1.5, 3, 3);
       }
       x.restore();
     },
@@ -173,7 +176,7 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
   let live = !reduced, hovered = null, mx = 0, my = 0, watch = null;
   const things = DEFS.map((def, i) => {
     const el = document.createElement('button');
-    el.type = 'button'; el.className = 'thing'; el.style.setProperty('--w', `${def.w}px`); el.style.setProperty('--h', `${def.h}px`);
+    el.type = 'button'; el.className = 'thing'; el.dataset.key = def.key; el.style.setProperty('--w', `${def.w}px`); el.style.setProperty('--h', `${def.h}px`);
     const canvas = document.createElement('canvas'); canvas.width = def.w * dpr; canvas.height = def.h * dpr;
     const name = document.createElement('span'); name.className = 'thing-name'; name.textContent = def.name;
     el.append(canvas, name); scene.append(el);
@@ -209,7 +212,7 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
     const copyTop = copy.getBoundingClientRect().top / innerHeight;
     // on a phone they sit in a grid under the copy instead, and arrive as that grid scrolls in
     const grid = roomy ? null : scene.getBoundingClientRect();
-    const wTable = roomy ? smooth(felt - 0.34, felt - 0.12, p) * smooth(0.62, 0.92, copyTop)
+    const wTable = roomy ? smooth(felt - 0.34, felt - 0.12, p) * smooth(0.84, 0.98, copyTop)
       : smooth(innerHeight, innerHeight * 0.8, grid.top) * smooth(0, innerHeight * 0.15, grid.bottom);
     for (const t of things) {
       const wSlot = t.ci < 0 ? 0 : 1 - smooth(0.4, 0.6, Math.abs(p - t.ci));
@@ -254,5 +257,10 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
     update,
     region(kind) { things[0].painter.region(kind); },
     setMotion(on) { live = on && !reduced; },
+    setTheme(light) {
+      Object.assign(INK, light ? { rgb: '16,19,31', solid: '#10131f', page: '#e6e9f0', butter: '#765a00', sage: '71,102,26', light: true }
+        : { rgb: '236,233,226', solid: BONE, page: '#0a0b0e', butter: '#f0d264', sage: '185,210,149', light: false });
+      for (const t of things) t.seen = -1;   // repaint the ones resting in the box
+    },
   };
 }
