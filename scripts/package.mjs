@@ -6,10 +6,11 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = resolve(root, '..', 'output', 'publish');
 // Explicit allowlist: never bundle .git, source data, handoff notes, or old studies.
 const files = [
-  'index.html', 'css/portfolio.css', 'js/portfolio.js', 'js/instruments.js',
+  'index.html', 'css/journey.css', 'js/journey.js', 'js/stage.js',
+  'assets/stage/real.jpg', 'assets/stage/clay.jpg', 'assets/stage/felt.jpg',
   'assets/headshot.jpg', 'assets/Aryan-Mehta-Resume.pdf', 'assets/favicon.svg', 'assets/social-preview.png',
-  'fonts/bricolage-grotesque-latin-opsz-normal.woff2', 'fonts/source-sans-3-latin-wght-normal.woff2',
-  'fonts/Newsreader-Italic-wght.ttf', 'fonts/BRICOLAGE-LICENSE', 'fonts/SOURCE-SANS-LICENSE', 'fonts/NEWSREADER-LICENSE'
+  'fonts/Prata-Regular.ttf', 'fonts/Caveat-wght.ttf', 'fonts/SpaceMono-Bold.ttf', 'fonts/Newsreader-Italic-wght.ttf',
+  'fonts/source-sans-3-latin-wght-normal.woff2', 'fonts/SOURCE-SANS-LICENSE', 'fonts/NEWSREADER-LICENSE'
 ];
 for (const file of files) {
   const target = resolve(output, file);

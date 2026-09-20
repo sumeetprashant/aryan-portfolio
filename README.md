@@ -17,23 +17,23 @@ To choose another port, set the `PORT` environment variable first.
 
 ## What to edit
 
-- `index.html`: biography, project summaries, case-study templates, contact links.
-- `css/portfolio.css`: colors, typography, layout, responsive styles, motion preferences.
-- `js/portfolio.js`: comparisons, case-study reader, navigation, motion control.
-- `js/instruments.js`: the three original canvas illustrations.
-- `assets/headshot.jpg`: the real portrait, styled in CSS without modifying the source.
-- `assets/Aryan-Mehta-Resume.pdf`: the existing downloadable résumé.
+The page is one idea: the site stays composed while Aryan is redrawn in a new
+material per chapter (melting pixels, clay, ASCII, particles, built blocks, felt,
+the real photograph). "Always a work in progress" is the navigation.
 
-The case studies are the four `<template id="story-…">` blocks in `index.html`.
-The privacy rates in `portfolio.js` are historical study results, not live data.
-The canvas visuals are explicitly labeled illustrations, not measurements or
-real geographic prediction maps.
-
-Motion follows the device’s reduced-motion setting, with a manual control in
-the footer. Canvas rendering pauses off-screen, in a hidden browser tab, and
-while a case study is open. The basic biography and project summaries remain
-readable without JavaScript. Native dialogs support keyboard navigation,
-Escape, focus trapping, and returning focus to the original button.
+- `index.html`: all copy, one `<section class="chapter">` per version. `data-state`
+  picks the portrait material, `data-side` the copy column, `data-note` the
+  handwritten line above his head. Case studies are the four `<template id="story-...">` blocks.
+- `js/stage.js`: the fixed WebGL2 portrait. Every material is a shader state drawn
+  from the same registered photo, so states dissolve into each other in place.
+- `js/journey.js`: scroll position to portrait state, the per-chapter assets
+  (ASCII chart, week signals, block grids), the case-study reader, motion control.
+- `css/journey.css`: layout, type, per-chapter asset styles.
+- `scripts/prep_stage.py`: registers the source portraits to one eye position and
+  cuts their mattes into `assets/stage/*.jpg` (colour left half, matte right half).
+  Needs the asset pack unzipped to `../pack/`. Re-run only if a portrait changes.
+- `index-codex.html`, `css/portfolio.css`, `js/portfolio.js`, `js/instruments.js`:
+  the previous editorial build, kept for reference. Not loaded or packaged.
 
 ## Publish safely
 

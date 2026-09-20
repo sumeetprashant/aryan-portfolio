@@ -3,377 +3,196 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Aryan Mehta | Engineering, product & people</title>
-    <meta name="description" content="An engineer's mind. A founder's instinct. Meet Aryan Mehta through his work in health technology, AI privacy research, and products built for real people.">
-    <meta name="theme-color" content="#141513">
+    <title>Aryan Mehta | Always a work in progress</title>
+    <meta name="description" content="Engineering, product and people. Aryan Mehta's work in health technology, AI privacy research and disease forecasting, told as a person who keeps being rebuilt.">
+    <meta name="theme-color" content="#0c0b0a">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Aryan Mehta | Built for the real world">
+    <meta property="og:title" content="Aryan Mehta | Always a work in progress">
     <meta property="og:description" content="Engineering, product & people. A few chapters from research labs to the people who rely on what we build.">
     <meta property="og:image" content="assets/social-preview.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-    <link rel="preload" href="fonts/bricolage-grotesque-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="fonts/Prata-Regular.ttf" as="font" type="font/ttf" crossorigin>
     <link rel="preload" href="fonts/source-sans-3-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="assets/headshot.jpg" as="image">
-    <link rel="stylesheet" href="css/portfolio.css">
-    <script type="module" src="js/portfolio.js">
-    </script>
+    <link rel="preload" href="assets/stage/real.jpg" as="image">
+    <link rel="stylesheet" href="css/journey.css">
+    <script type="module" src="js/journey.js"></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
+
+    <div class="stage" aria-hidden="true">
+      <canvas id="stage-canvas"></canvas>
+      <img class="stage-fallback" src="assets/headshot.jpg" alt="" width="846" height="564" loading="lazy">
+      <p class="stage-note" id="stage-note"></p>
+    </div>
+
     <header class="site-header">
       <a class="brand" href="#top" aria-label="Aryan Mehta, home">
         <span class="monogram" aria-hidden="true">a/m</span>
-        <span class="brand-name">Aryan Mehta<small>Engineering, product & people</small>
-        </span>
+        <span class="brand-name">Aryan Mehta<small>Engineering, product & people</small></span>
       </a>
       <nav class="nav-links" aria-label="Main navigation">
-        <a href="#work">Selected work</a>
         <a href="#about">The person</a>
-        <a href="assets/Aryan-Mehta-Resume.pdf" target="_blank" rel="noopener">Résumé <span class="arrow" aria-hidden="true">↗</span>
-        </a>
-        <a class="nav-contact" href="#contact">Let’s talk <span class="arrow" aria-hidden="true">↗</span>
-        </a>
+        <a href="assets/Aryan-Mehta-Resume.pdf" target="_blank" rel="noopener">Résumé</a>
+        <a class="nav-contact" href="#contact">Let’s talk</a>
       </nav>
     </header>
+
     <main id="main">
-      <section class="hero shell" id="top" aria-labelledby="hero-title">
-        <div class="hero-copy">
-          <p class="hero-kicker label">An engineer’s mind. A founder’s instinct.</p>
-          <h1 id="hero-title">
-            <span>Aryan</span>
-            <span>Mehta.</span>
-          </h1>
-          <p class="hero-description">Deep in the technology.<br>Closer to the <em>people.</em>
-          </p>
-          <p class="hero-intro">I build products, lead teams, and stay close to the problems worth solving.</p>
-        </div>
-        <figure class="portrait-stage">
-          <img src="assets/headshot.jpg" width="846" height="564" alt="Aryan Mehta, smiling in a navy suit" fetchpriority="high">
-        </figure>
-        <p class="portrait-note" aria-hidden="true">Always a work in progress.<span>And always up for the next hard problem.</span>
-        </p>
-        <div class="hero-footer">
-          <a class="scroll-link" href="#story">
-            <span class="arrow" aria-hidden="true">↓</span>A few chapters so far</a>
-          <div class="hero-trail" aria-hidden="true">
-            <span>Research</span>
-            <span>↗</span>
-            <span>Product</span>
-            <span>↗</span>
-            <span>People</span>
-          </div>
-          <span class="label muted">Selected work / 2024–26</span>
+      <section class="chapter hero" id="top" data-state="melt" data-side="left" data-form="in pixels, melting" data-note="Always a work in progress." aria-labelledby="hero-title">
+        <div class="copy">
+          <p class="label">An engineer’s mind. A founder’s instinct.</p>
+          <h1 id="hero-title"><span>Aryan</span><span class="accent">Mehta.</span></h1>
+          <p class="lede">Deep in the technology.<br>Closer to the <em>people.</em></p>
+          <p class="body">I build products, lead teams, and stay close to the problems worth solving. Every project rebuilt me a little. Scroll, and watch it happen.</p>
+          <a class="scroll-link" href="#story"><span aria-hidden="true">↓</span> Seven versions of one person</a>
         </div>
       </section>
-      <section class="intro shell" id="story" aria-labelledby="intro-title">
-        <div class="intro-top">
-          <h2 class="reveal" id="intro-title">The interesting part<br>is where the<br>
-            <em>disciplines meet.</em>
-          </h2>
-          <div class="intro-text reveal">
-            <p class="label">A little context</p>
-            <p>I trained as a computer engineer. Research took me into AI privacy at <strong>MIT</strong> and disease forecasting at <strong>Harvard</strong>.</p>
-            <p>At <strong>Kiwi Senior Health</strong>, I helped take a wearable from an idea to people’s wrists, then stepped into interim co-CEO responsibilities.</p>
-            <p>The throughline? Getting close enough to a problem to build something that actually helps.</p>
-          </div>
-        </div>
-        <div class="affiliations reveal" aria-label="Education and selected experience">
-          <div class="affiliation">
-            <b>Penn State</b>
-            <span>Computer engineering</span>
-          </div>
-          <div class="affiliation">
-            <b>MIT</b>
-            <span>AI privacy research</span>
-          </div>
-          <div class="affiliation">
-            <b>Harvard</b>
-            <span>Digital health research</span>
-          </div>
-          <div class="affiliation">
-            <b>kiwi</b>
-            <span>Founding product & leadership</span>
-          </div>
+
+      <section class="chapter" id="story" data-state="melt" data-melt="1" data-side="right" data-form="in pixels, melting" data-note="Ideas melt. Better things form." aria-labelledby="intro-title">
+        <div class="copy">
+          <p class="label">A little context</p>
+          <h2 id="intro-title">The interesting part is where the disciplines <em>meet.</em></h2>
+          <p class="body">I trained as a computer engineer. Research took me into AI privacy at MIT and disease forecasting at Harvard.</p>
+          <p class="body">At Kiwi Senior Health, I helped take a wearable from an idea to people’s wrists, then stepped into interim co-CEO responsibilities.</p>
+          <p class="body">The throughline? Getting close enough to a problem to build something that actually helps. And being willing to come apart a little, each time, to be put back together better.</p>
+          <ul class="places">
+            <li><b>Penn State</b><span>Computer engineering</span></li>
+            <li><b>MIT</b><span>AI privacy research</span></li>
+            <li><b>Harvard</b><span>Digital health research</span></li>
+            <li><b>Kiwi</b><span>Founding product & leadership</span></li>
+          </ul>
         </div>
       </section>
-      <section id="work" aria-label="Selected work">
-        <div class="work-heading shell">
-          <h2 class="reveal">A closer look.</h2>
-          <p>Different disciplines.<br>Real-world consequences.</p>
-        </div>
-        <article class="project project-kiwi shell" id="kiwi" aria-labelledby="kiwi-title">
-          <div class="project-grid">
-            <div class="project-copy reveal">
-              <p class="label">Kiwi Senior Health / Product & machine learning</p>
-              <h2 id="kiwi-title">A little watch.<br>A lot <em>riding<br>on it.</em>
-              </h2>
-              <p>A fall detector has to know the difference between a wrist moving and a person needing help.</p>
-              <p>I owned the model, the product, and the messy path between them. Sixty-nine model configurations later, we had something ready to run on the watch.</p>
-              <button class="text-link" data-story="kiwi" type="button">Inside the work <span class="arrow" aria-hidden="true">↗</span>
-              </button>
-              <div class="project-facts">
-                <div>
-                  <b>0.990</b>
-                  <span>Model AUC<br>on held-out participants</span>
-                </div>
-                <div>
-                  <b>4 pilots</b>
-                  <span>Signed within a month<br>of the product launch</span>
-                </div>
-              </div>
-            </div>
-            <div class="reveal">
-              <div class="instrument instrument-kiwi" aria-label="Illustrated comparison of fall detection approaches">
-                <div class="instrument-label">
-                  <span>From motion to meaning</span>
-                  <span>Kiwi / Fall detection</span>
-                </div>
-                <p class="instrument-visual-label">An illustration of signal processing</p>
-                <div class="canvas-fallback" aria-hidden="true">
-                  <i style="--height:34%">
-                  </i>
-                  <i style="--height:53%">
-                  </i>
-                  <i style="--height:72%">
-                  </i>
-                  <i style="--height:90%">
-                  </i>
-                  <i style="--height:100%">
-                  </i>
-                  <i style="--height:89%">
-                  </i>
-                  <i style="--height:68%">
-                  </i>
-                  <i style="--height:45%">
-                  </i>
-                  <i style="--height:30%">
-                  </i>
-                </div>
-                <canvas class="instrument-canvas" id="signal-canvas" aria-hidden="true">
-                </canvas>
-                <div class="instrument-metric" aria-live="polite">
-                  <b id="signal-value">450×</b>
-                  <span id="signal-description">fewer wrist-posture false alarms</span>
-                </div>
-                <div class="instrument-controls">
-                  <div class="segmented" role="group" aria-label="Compare fall detection approaches">
-                    <button type="button" data-signal="raw" aria-pressed="false">Raw acceleration</button>
-                    <button type="button" data-signal="model" aria-pressed="true">Motion signals</button>
-                  </div>
-                  <span>One small change in representation.<br>A very different result.</span>
-                </div>
-              </div>
-              <p class="project-footnote">Tested on 10 working-age adults, not the elderly target population. These are test-group results, not clinical performance claims.</p>
-            </div>
+
+      <section class="chapter style-clay" id="engineering" data-state="clay" data-side="left" data-form="in clay" data-note="First you learn to build with your hands." aria-labelledby="capstone-title">
+        <div class="copy">
+          <p class="label">Penn State × Lockheed Martin / Sponsored capstone</p>
+          <h2 id="capstone-title">Back to the nuts. And bolts. And <em>physics.</em></h2>
+          <p class="body">A six-person team, a $1,250 budget, and a rig to measure the mass properties of UAVs up to 150 lb. I led the project and built the embedded software.</p>
+          <figure class="asset asset-clay" aria-label="Conceptual line drawing of a suspended UAV mass-properties test rig">
+            <svg viewBox="0 0 500 350" fill="none" role="img" aria-hidden="true">
+              <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="2" seed="4"/><feDisplacementMap in="SourceGraphic" scale="4"/></filter>
+              <g class="rig-frame">
+                <path d="M55 269 220 322 458 203 294 150Z" stroke-dasharray="3 5"/>
+                <path d="M71 271V83L267 24V211M257 316V128L452 69V256"/>
+                <path d="M71 83 257 128 452 69 267 24 71 83M71 95 257 140 452 81M71 83V95M257 128V140M452 69V81M84 96V268M269 140V310M440 84V250"/>
+                <path d="M71 271 257 316 452 256M71 264 257 309 452 249M71 267 87 253M257 309 269 296M440 249 452 233M84 140 173 116M269 182 353 110M352 279 440 195"/>
+              </g>
+              <g class="rig-craft">
+                <path d="M187 67V204M338 101V228" stroke-dasharray="3 4"/>
+                <path class="rig-body" d="m147 223 113 29 118-57-34-8-74 26-84-31-20 9 66 38-49 12-31-17Z"/>
+                <path d="m260 252 10-39M326 225l14 22M187 204l47 26M338 228l-27-28"/>
+              </g>
+              <circle cx="268" cy="216" r="4"/>
+            </svg>
+            <figcaption>UAV mass properties rig. Conceptual schematic.</figcaption>
+          </figure>
+          <div class="facts">
+            <div><b>6 people</b><span>One hardware & software team</span></div>
+            <div><b>$71.89</b><span>Left in the materials budget</span></div>
           </div>
-        </article>
-        <article class="project project-privacy shell" id="research" aria-labelledby="privacy-title">
-          <div class="project-grid">
-            <div class="privacy-diagram reveal" aria-label="Third-party network requests by AI platform in the 2025 study">
-              <div class="privacy-heading">
-                <span>Following the data</span>
-                <span>2025 research snapshot</span>
-              </div>
-              <div class="privacy-center" aria-live="polite">
-                <b id="privacy-value">35.9%</b>
-                <span>of <span id="privacy-platform">Grok</span> requests reached third parties</span>
-              </div>
-              <canvas id="privacy-canvas" aria-hidden="true">
-              </canvas>
-              <div class="privacy-key">
-                <span>First party</span>
-                <span>Third party</span>
-              </div>
-              <div class="privacy-tabs" role="group" aria-label="Choose a platform from the study">
-                <button type="button" data-platform="Grok" aria-pressed="true">Grok</button>
-                <button type="button" data-platform="Claude" aria-pressed="false">Claude</button>
-                <button type="button" data-platform="ChatGPT" aria-pressed="false">ChatGPT</button>
-                <button type="button" data-platform="Gemini" aria-pressed="false">Gemini</button>
-              </div>
-              <p class="privacy-note">Historical measurements, not a live audit. Request destinations do not establish what conversation content was shared.</p>
-            </div>
-            <div class="project-copy reveal">
-              <p class="label">MIT / AI privacy research</p>
-              <h2 id="privacy-title">A private chat.<br>An unexpected<br>
-                <em>audience.</em>
-              </h2>
-              <p>What happens beyond the chat window? I led a research team tracing network traffic from commercial AI tools to find out.</p>
-              <p>The study found that 9–36% of captured requests from four platforms went to third-party domains, raising questions about AI use in healthcare.</p>
-              <button class="text-link" data-story="privacy" type="button">Follow the research <span class="arrow" aria-hidden="true">↗</span>
-              </button>
-              <div class="privacy-finding">
-                <b>1,839</b>
-                <span>HTTP / HTTPS requests captured</span>
-              </div>
-              <p class="project-footnote">Co-authored with Leo Anthony Celi (MIT) and Joseph Sakran (Johns Hopkins).</p>
-            </div>
-          </div>
-        </article>
-        <article class="project project-forecast shell" id="forecast" aria-labelledby="forecast-title">
-          <div class="project-grid">
-            <div class="project-copy reveal">
-              <p class="label">Prognosis & Harvard / Disease forecasting</p>
-              <h2 id="forecast-title">A head start<br>can change<br>
-                <em>what’s next.</em>
-              </h2>
-              <p>Dengue doesn’t wait for a dashboard. Public-health teams need time to act.</p>
-              <p>Two related chapters in my work used satellite imagery and machine learning to help turn environmental signals into earlier warning.</p>
-              <div class="terrain-toggle" role="group" aria-label="Explore the two forecasting projects">
-                <button type="button" data-forecast="prognosis" aria-pressed="true">Prognosis</button>
-                <button type="button" data-forecast="harvard" aria-pressed="false">Harvard research</button>
-              </div>
-              <p class="forecast-context" id="forecast-context" aria-live="polite">I founded Prognosis and led a seven-person team. The platform was adopted by public-health agencies across three Indian states.</p>
-              <button class="text-link" data-story="forecast" type="button">Explore both chapters <span class="arrow" aria-hidden="true">↗</span>
-              </button>
-            </div>
-            <div class="instrument terrain-instrument reveal">
-              <div class="instrument-label">
-                <span id="terrain-label">Prognosis / India</span>
-                <span>Satellite data → foresight</span>
-              </div>
-              <canvas class="instrument-canvas" id="terrain-canvas" aria-hidden="true">
-              </canvas>
-              <div class="instrument-metric" aria-live="polite">
-                <b id="forecast-value">5 <small>weeks</small>
-                </b>
-                <span id="forecast-description">ahead of a potential dengue outbreak</span>
-              </div>
-              <p class="terrain-caption">Illustrated terrain. Not a geographic prediction map.</p>
-            </div>
-          </div>
-        </article>
-        <article class="project project-capstone shell" id="engineering" aria-labelledby="capstone-title">
-          <div class="capstone-grid">
-            <div class="capstone-art reveal">
-              <svg viewBox="0 0 500 350" fill="none" role="img" aria-label="Conceptual line drawing of a suspended UAV mass-properties test rig">
-                <g stroke="#68735b" stroke-width="1.1">
-                  <path d="M55 269 220 322 458 203 294 150Z" stroke-dasharray="3 5"/>
-                  <path d="M71 271V83L267 24V211M257 316V128L452 69V256"/>
-                  <path d="M71 83 257 128 452 69 267 24 71 83M71 95 257 140 452 81M71 83V95M257 128V140M452 69V81M84 96V268M269 140V310M440 84V250"/>
-                  <path d="M71 271 257 316 452 256M71 264 257 309 452 249M71 267 87 253M257 309 269 296M440 249 452 233M84 140 173 116M269 182 353 110M352 279 440 195"/>
-                </g>
-                <g stroke="#d3c09a" stroke-width="1.3">
-                  <path d="M187 67V204M338 101V228" stroke-dasharray="3 4"/>
-                  <path d="m147 223 113 29 118-57-34-8-74 26-84-31-20 9 66 38-49 12-31-17Z" fill="#30362a"/>
-                  <path d="m260 252 10-39M326 225l14 22"/>
-                  <path d="m187 204 47 26M338 228l-27-28"/>
-                </g>
-                <g stroke="#a39774" stroke-width=".8">
-                  <path d="m74 301 177 43M74 296v10M251 339v10M464 270V69M459 270h10M459 69h10"/>
-                </g>
-                <circle cx="268" cy="216" r="4" fill="#d3c09a"/>
-                <path d="M278 214h45l19-18" stroke="#d3c09a" stroke-width=".7"/>
-              </svg>
-              <span class="label">UAV mass properties / Conceptual schematic</span>
-            </div>
-            <div class="capstone-copy reveal">
-              <p class="label">Penn State × Lockheed Martin / Sponsored capstone</p>
-              <h2 id="capstone-title">Back to the nuts.<br>And bolts. And physics.</h2>
-              <p>A six-person team, a $1,250 budget, and a rig to measure the mass properties of UAVs up to 150 lb. I led the project and built the embedded software.</p>
-              <div class="capstone-meta">
-                <span>
-                  <b>6 people</b>One hardware & software team</span>
-                <span>
-                  <b>$71.89</b>Left in the materials budget</span>
-              </div>
-              <button class="text-link" data-story="capstone" type="button">See how it came together <span class="arrow" aria-hidden="true">↗</span>
-              </button>
-            </div>
-          </div>
-        </article>
-      </section>
-      <section class="about shell" id="about" aria-labelledby="about-title">
-        <div class="about-top">
-          <div class="about-left reveal">
-            <p class="label">The person behind the projects</p>
-            <h2 id="about-title">I go where<br>I’m <em>needed.</em>
-            </h2>
-            <p class="about-signature">That’s usually where I learn the most.</p>
-          </div>
-          <div class="about-copy reveal">
-            <p>At Kiwi, that meant writing the roadmap, hiring engineers, talking to suppliers, and personally testing and packing the watches we shipped.</p>
-            <p>It also meant sitting with elderly users and helping them get comfortable with a new device. <strong>A better model is only useful if someone wants to wear it.</strong>
-            </p>
-            <p>In July 2026, I stepped into interim co-CEO responsibilities alongside the founder. The scope grew. The instinct stayed the same: understand the details, take responsibility, and keep things moving.</p>
-            <p class="about-note">B.S. Computer Engineering, Penn State. Minors in cybersecurity and economics. A habit of crossing disciplines.</p>
-          </div>
-        </div>
-        <div class="journey reveal">
-          <p class="label">The path so far</p>
-          <div>
-            <div class="journey-row">
-              <time>2021–2025</time>
-              <h3>Penn State</h3>
-              <p>Computer engineering</p>
-            </div>
-            <div class="journey-row">
-              <time>2024–2025</time>
-              <h3>MIT & Harvard</h3>
-              <p>AI privacy & digital health research</p>
-            </div>
-            <div class="journey-row">
-              <time>2024–2025</time>
-              <h3>Prognosis</h3>
-              <p>Founder & product manager</p>
-            </div>
-            <div class="journey-row">
-              <time>Joined 2024</time>
-              <h3>Kiwi Senior Health</h3>
-              <p>Founding product manager</p>
-            </div>
-            <div class="journey-row">
-              <time>July 2026</time>
-              <h3>A wider responsibility</h3>
-              <p>Stepped into interim co-CEO scope</p>
-            </div>
-          </div>
+          <button class="text-link" data-story="capstone" type="button">See how it came together <span aria-hidden="true">↗</span></button>
         </div>
       </section>
-      <section class="contact shell" id="contact" aria-labelledby="contact-title">
-        <div class="contact-top reveal">
-          <div>
-            <p class="label">Good work starts with a conversation.</p>
-            <h2 id="contact-title">Let’s make<br>it <em>matter.</em>
-            </h2>
-          </div>
-          <a class="contact-arrow arrow" href="mailto:mehtaaryan1999@gmail.com" aria-label="Email Aryan">↗</a>
+
+      <section class="chapter style-ascii" id="research" data-state="ascii" data-side="right" data-form="in characters" data-note="Then you learn how machines see." aria-labelledby="privacy-title">
+        <div class="copy">
+          <p class="label">MIT / AI privacy research</p>
+          <h2 id="privacy-title">A private chat. An unexpected <em>audience.</em></h2>
+          <p class="body">What happens beyond the chat window? I led a research team tracing network traffic from commercial AI tools to find out.</p>
+          <p class="body">The study found that 9–36% of captured requests from four platforms went to third-party domains, raising questions about AI use in healthcare.</p>
+          <figure class="asset asset-ascii">
+            <pre id="ascii-chart" aria-label="Third-party request rates in the 2025 study: Grok 35.9%, Claude 14.0%, ChatGPT 13.7%, Gemini 9.0%"></pre>
+            <figcaption>1,839 HTTP / HTTPS requests captured. Historical measurements, not a live audit. Request destinations do not establish what conversation content was shared.</figcaption>
+          </figure>
+          <p class="footnote">Co-authored with Leo Anthony Celi (MIT) and Joseph Sakran (Johns Hopkins).</p>
+          <button class="text-link" data-story="privacy" type="button">Follow the research <span aria-hidden="true">↗</span></button>
         </div>
-        <div class="contact-actions reveal">
+      </section>
+
+      <section class="chapter style-signal" id="forecast" data-state="signal" data-side="left" data-form="in signals" data-note="Then, how to find the signal in the noise." aria-labelledby="forecast-title">
+        <div class="copy">
+          <p class="label">Prognosis & Harvard / Disease forecasting</p>
+          <h2 id="forecast-title">A head start can change <em>what’s next.</em></h2>
+          <p class="body">Dengue doesn’t wait for a dashboard. Public-health teams need time to act.</p>
+          <p class="body">Two related chapters in my work used satellite imagery and machine learning to help turn environmental signals into earlier warning.</p>
+          <figure class="asset asset-signal">
+            <div class="toggle" role="group" aria-label="Explore the two forecasting projects">
+              <button type="button" data-forecast="prognosis" aria-pressed="true">Prognosis</button>
+              <button type="button" data-forecast="harvard" aria-pressed="false">Harvard research</button>
+            </div>
+            <div class="weeks" id="weeks" aria-hidden="true"></div>
+            <p class="metric" aria-live="polite"><b id="forecast-value">5 weeks</b><span id="forecast-description">ahead of a potential dengue outbreak</span></p>
+            <figcaption id="forecast-context">I founded Prognosis and led a seven-person team. The platform was adopted by public-health agencies across three Indian states.</figcaption>
+          </figure>
+          <button class="text-link" data-story="forecast" type="button">Explore both chapters <span aria-hidden="true">↗</span></button>
+        </div>
+      </section>
+
+      <section class="chapter style-blocks" id="kiwi" data-state="blocks" data-side="right" data-form="in blocks" data-note="Then you ship it, block by block." aria-labelledby="kiwi-title">
+        <div class="copy">
+          <p class="label">Kiwi Senior Health / Product & machine learning</p>
+          <h2 id="kiwi-title">A little watch. A lot <em>riding on it.</em></h2>
+          <p class="body">A fall detector has to know the difference between a wrist moving and a person needing help.</p>
+          <p class="body">I owned the model, the product, and the messy path between them. Sixty-nine model configurations later, we had something ready to run on the watch.</p>
+          <figure class="asset asset-blocks" aria-label="Wrist-posture false alarms: 91.7% with raw acceleration, 0.2% with motion signals">
+            <div class="grid-pair">
+              <div><div class="blocks" data-lit="92"></div><p><b>91.7%</b>Raw acceleration</p></div>
+              <div><div class="blocks" data-lit="0.2"></div><p><b>0.2%</b>Motion signals</p></div>
+            </div>
+            <figcaption>Wrist-posture false positives, naive baseline against the final model. One change in representation, 450× fewer. Tested on 10 working-age adults, not the elderly target population. These are test-group results, not clinical performance claims.</figcaption>
+          </figure>
+          <div class="facts">
+            <div><b>0.990</b><span>Model AUC on held-out participants</span></div>
+            <div><b>4 pilots</b><span>Signed within a month of the product launch</span></div>
+          </div>
+          <button class="text-link" data-story="kiwi" type="button">Inside the work <span aria-hidden="true">↗</span></button>
+        </div>
+      </section>
+
+      <section class="chapter style-felt" id="about" data-state="felt" data-side="left" data-form="in felt" data-note="And it was always about people." aria-labelledby="about-title">
+        <div class="copy">
+          <p class="label">The person behind the projects</p>
+          <h2 id="about-title">I go where I’m <em>needed.</em></h2>
+          <p class="lede small">That’s usually where I learn the most.</p>
+          <p class="body">At Kiwi, that meant writing the roadmap, hiring engineers, talking to suppliers, and personally testing and packing the watches we shipped.</p>
+          <p class="body">It also meant sitting with elderly users and helping them get comfortable with a new device. <strong>A better model is only useful if someone wants to wear it.</strong></p>
+          <p class="body">In July 2026, I stepped into interim co-CEO responsibilities alongside the founder. The scope grew. The instinct stayed the same: understand the details, take responsibility, and keep things moving.</p>
+          <ol class="asset asset-felt" aria-label="The path so far">
+            <li><time>2021–2025</time><b>Penn State</b><span>Computer engineering</span></li>
+            <li><time>2024–2025</time><b>MIT & Harvard</b><span>AI privacy & digital health research</span></li>
+            <li><time>2024–2025</time><b>Prognosis</b><span>Founder & product manager</span></li>
+            <li><time>Joined 2024</time><b>Kiwi Senior Health</b><span>Founding product manager</span></li>
+            <li><time>July 2026</time><b>A wider responsibility</b><span>Stepped into interim co-CEO scope</span></li>
+          </ol>
+          <p class="footnote">B.S. Computer Engineering, Penn State. Minors in cybersecurity and economics. A habit of crossing disciplines.</p>
+        </div>
+      </section>
+
+      <section class="chapter contact" id="contact" data-state="real" data-side="left" data-form="in person" data-note="Still becoming." aria-labelledby="contact-title">
+        <div class="copy">
+          <p class="label">Always a work in progress. Ready for the next hard problem.</p>
+          <h2 id="contact-title">Let’s make it <em>matter.</em></h2>
+          <p class="body">Every version on this page was the best one at the time. The next one starts with a conversation.</p>
           <a class="email-link" href="mailto:mehtaaryan1999@gmail.com">mehtaaryan1999@gmail.com</a>
           <div class="contact-links">
-            <a href="https://www.linkedin.com/in/aryanmehta2004/" target="_blank" rel="noopener noreferrer">LinkedIn <span class="arrow" aria-hidden="true">↗</span>
-            </a>
-            <a href="assets/Aryan-Mehta-Resume.pdf" download>Résumé <span class="arrow" aria-hidden="true">↓</span>
-            </a>
+            <a href="https://www.linkedin.com/in/aryanmehta2004/" target="_blank" rel="noopener noreferrer">LinkedIn <span aria-hidden="true">↗</span></a>
+            <a href="assets/Aryan-Mehta-Resume.pdf" download>Résumé <span aria-hidden="true">↓</span></a>
           </div>
         </div>
         <footer class="footer">
-          <a class="footer-monogram" href="#top" aria-label="Back to top">a/m</a>
-          <span>© 2026 Aryan Mehta. Thoughtfully built, down to the details.</span>
-          <div class="footer-controls">
-            <span>No trackers. No third-party requests.</span>
-            <button class="motion-toggle" id="motion-toggle" type="button" aria-pressed="false">Pause motion</button>
-          </div>
+          <span>© 2026 Aryan Mehta. No trackers. No third-party requests.</span>
+          <button class="motion-toggle" id="motion-toggle" type="button" aria-pressed="false">Pause motion</button>
         </footer>
       </section>
     </main>
-    <nav class="page-rail" aria-label="Chapter navigation">
-      <a href="#top" aria-label="Introduction" aria-current="true">
-      </a>
-      <a href="#kiwi" aria-label="Kiwi Senior Health">
-      </a>
-      <a href="#research" aria-label="AI privacy research">
-      </a>
-      <a href="#forecast" aria-label="Disease forecasting">
-      </a>
-      <a href="#about" aria-label="About Aryan">
-      </a>
-      <a href="#contact" aria-label="Contact">
-      </a>
-    </nav>
+
+    <nav class="rail" id="rail" aria-label="Versions of Aryan"></nav>
+
     <dialog class="story-dialog" id="story-dialog" aria-labelledby="dialog-title">
       <div class="dialog-top">
         <span class="label">Aryan Mehta / A closer look</span>
@@ -504,7 +323,7 @@
       </div>
     </template>
     <noscript>
-      <style>.text-link[data-story],.segmented,.privacy-tabs,.terrain-toggle,.motion-toggle{display:none}.story-dialog{display:none}</style>
+      <style>.text-link[data-story],.toggle,.motion-toggle,.rail,.stage-note{display:none}.stage-fallback{display:block}</style>
     </noscript>
   </body>
 </html>
