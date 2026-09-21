@@ -2,7 +2,7 @@
 // on the registered portrait (scripts/prep_stage.py) and scroll decides what it is right
 // now: a pixel, a free point, part of a character, a lit cube, part of a brick, a photo
 // texel. Nothing swaps; between versions the cells break into points and re-gather.
-import { FACE, CROP } from './crt.js';
+const FACE = [0.495, 0.325], CROP = { v: 0.335, dv: 0.47 };   // the middle of his face, and the band hair to collar, in the portrait's frame
 
 const ASPECT = 2 / 3;
 const VMAX = 0.78125;
@@ -219,8 +219,8 @@ void main(){
   float rr = .05 + .55 * pow(aSeed.y, .75);
   vec2 frame = vec2(uScale * ASPECT, uScale);
   vec2 halo = vec2(.5, .36) + vec2(cos(th) * rr * uRes.x, sin(th) * rr * .9 * uRes.y) / frame;
-  // the summary's monitor melts into points too (js/crt.js): each starts where it sits in his picture on the glass, or on the
-  // glass's bottom edge if the picture does not reach it, runs down a little as a drip, and drifts out into the room
+  // he melts into points too at the end of the summary (js/aryan.js): each starts inside the box he fills on the page (uGlass),
+  // runs down a little as a drip, and drifts out into the room
   float base = step(.93, aSeed.w), extra = step(.7, aSeed.w) * (1. - base);
   float burst = loc(uDrip, aSeed.z * .6 + clamp(1. - home.y / .6, 0., 1.) * .4, .5);
   vec2 gf = clamp((home - vec2(${FACE[0]}, ${CROP.v})) / vec2(${CROP.dv} * 1.5 * uGlass.z / uGlass.w, ${CROP.dv}) + .5, vec2(.05, .04), vec2(.95, .97));
@@ -247,7 +247,7 @@ void main(){
   // the dust never crosses the words: it thins to nothing over the summary's copy and its heading
   vec2 at = uCenter + (pos - .5) * frame;
   float clear = mix(1., outside(uKeepA, at) * outside(uKeepB, at) * outside(uKeepC, at), out5);
-  // nor his monitor: only the points it melts into are ever in front of it
+  // nor him: only the points he melts into are ever in front of him
   clear *= mix(1., outside(uKeepD, at), out5 * (1. - extra * step(burst, .999)));
   // and the pixels his hair lets go of keep out of the head line's box
   clear *= mix(1., smoothstep(uKeepM * .1, uKeepM * .3, length(max(max(uKeepC.xy - at, at - uKeepC.zw), 0.))), step(.004, dsp));
@@ -712,8 +712,8 @@ export async function createStage(canvas) {
     place(u, v) { const s = view.scale * innerHeight; return [view.cx * innerWidth + (u - 0.5) * s * ASPECT, view.cy * innerHeight + (v - 0.5) * s]; },
     // the rectangles of words the summary's dust stays out of, as DOMRects (or null)
     keepOut(a, b, c) { boxes.keepA = box(a); boxes.keepB = box(b); boxes.keepC = box(c); },
-    // the glass of the summary's monitor as a DOMRect (null while it is away), and how far he has gone (0..1). The room's dust
-    // keeps off the whole monitor, which is about a sixth wider than its glass, until it has melted away
+    // the box he fills in the summary (js/aryan.js; null while he is away), and how far he has gone (0..1). The room's dust
+    // keeps off him until he has melted away
     glass(r, leave) {
       if (!r) { boxes.keepD = FAR; return; }
       boxes.glass = [r.left + r.width / 2, r.top, r.width, r.height];

@@ -71,7 +71,6 @@ h1, h2, h3, .lede, .brand-name, .label, .nav-links, .theme-toggle, .rail a, .scr
 /* the stage: Aryan, fixed, behind the page */
 .stage { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
 .stage canvas { width: 100%; height: 100%; display: block; }
-/* the portrait's canvas lies over the summary's monitor, so the points the monitor melts into are in front of its glass */
 #stage-canvas { position: relative; z-index: 1; }
 .stage::after { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 40%, transparent 55%, var(--vignette)); }
 .stage-fallback { display: none; position: absolute; left: var(--px); top: 58vh; height: 78vh; width: auto; transform: translate(-50%, -50%); }
@@ -93,35 +92,9 @@ h1, h2, h3, .lede, .brand-name, .label, .nav-links, .theme-toggle, .rail a, .scr
 .stage-note[data-kind="pixels"], .stage-note[data-kind="melt"] { font: 400 1.75rem/1 var(--pixel); letter-spacing: .04em; }
 .stage-note[data-kind="ascii"] { font: 700 .95rem/1.2 var(--mono); }
 
-/* the summary's monitor (js/crt.js): an object on the desk with him in it. It sits inside the stage, under the canvas, so the
-   points its picture melts into are drawn over its glass. Every measure is in em, and 1em is a hundredth of its height */
-.crt { position: absolute; left: 0; top: 0; height: var(--crt-h, 47vh); aspect-ratio: 1.12; font-size: calc(var(--crt-h, 47vh) / 100); opacity: 0; visibility: hidden; will-change: transform, opacity; --lit: 1; --said: 1; --gx: 0; --gy: 0; --s: 1; }
-.crt::after { content: ""; position: absolute; left: 8%; right: 8%; bottom: -3.5em; height: 8em; z-index: -2; background: radial-gradient(closest-side, rgba(0, 0, 0, .6), transparent); }
-[data-theme="light"] .crt::after { background: radial-gradient(closest-side, rgba(38, 50, 104, .34), transparent); }
-.crt-body {
-  position: absolute; inset: 0 0 11% 0; border-radius: 7em / 7.4em; background: linear-gradient(168deg, #30323b, #1b1c23 42%, #121318);
-  box-shadow: inset 0 .25em 0 rgba(255, 255, 255, .13), inset 0 0 0 .2em rgba(255, 255, 255, .045), inset 0 -2.4em 3.6em rgba(0, 0, 0, .5), 0 5em 9em -4em rgba(0, 0, 0, .75);
-}
-[data-theme="light"] .crt-body { box-shadow: inset 0 .25em 0 rgba(255, 255, 255, .16), inset 0 0 0 .2em rgba(255, 255, 255, .05), inset 0 -2.4em 3.6em rgba(0, 0, 0, .5), 0 5em 9em -4em rgba(38, 50, 104, .55); }
-/* the glass: set back in a dark lip, slightly convex (the picture bows in crt.js; here the edge falls into shadow),
-   with a faint reflection that moves against the way he looks (--gx, --gy) */
-.crt-glass { position: absolute; inset: 6.4% 6% 13.5% 6%; border-radius: 7.5em / 8.5em; overflow: hidden; background: #050608; box-shadow: 0 0 0 1.1em #08090c, 0 0 0 1.35em rgba(255, 255, 255, .07), 0 .5em 0 1.35em rgba(0, 0, 0, .35); }
-.crt-glass canvas { display: block; width: 100%; height: 100%; }
-.crt-glass::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
-  background:
-    radial-gradient(95% 70% at calc(27% - var(--gx) * 10%) calc(6% - var(--gy) * 6%), rgba(255, 255, 255, .12), rgba(255, 255, 255, .03) 40%, transparent 62%),
-    linear-gradient(transparent 79%, rgba(5, 6, 10, calc(.74 * var(--lit))) 91%);
-  box-shadow: inset 0 0 5em rgba(0, 0, 0, .7), inset 0 0 1em rgba(0, 0, 0, .9);
-}
-/* the screen's own line: the chapter's head line, or the name of whatever has his attention */
-.crt-line { position: absolute; z-index: 1; left: 4%; right: 4%; bottom: 5.5%; margin: 0; text-align: center; white-space: nowrap; font: 700 calc(.84rem / var(--s)) / 1.2 var(--mono); text-transform: lowercase; color: #f2f0ea; text-shadow: 0 0 .6em rgba(255, 255, 255, .4); opacity: var(--said); }
-.crt-line::before { content: "> "; opacity: .6; }
-.crt-line span { transition: opacity .1s linear; }
-.crt-line span::after { content: "_"; animation: blink 1.1s steps(1) infinite; }
-.crt-line.is-changing span { opacity: 0; }
-.crt-power { position: absolute; right: 8.5%; bottom: 4.6%; width: 1.5em; height: 1.5em; border-radius: 50%; background: #b9d295; box-shadow: 0 0 1.1em rgba(185, 210, 149, .75), inset 0 -.2em .3em rgba(0, 0, 0, .35); opacity: calc(.22 + .78 * var(--lit)); }
-.crt-foot { position: absolute; left: 31%; right: 31%; bottom: 0; height: 12.5%; z-index: -1; background: linear-gradient(#0c0d11 30%, #22232b 82%, #15161b); clip-path: polygon(14% 0, 86% 0, 100% 100%, 0 100%); }
+/* Aryan in the summary (js/aryan.js): his clips, cut out of their green screen, drawn over the page's words and
+   the header's fade, under the things */
+.aryan { position: fixed; inset: 0; z-index: 5; width: 100%; height: 100%; display: block; pointer-events: none; }
 @keyframes blink { 50% { opacity: 0; } }
 
 .site-header {
@@ -312,8 +285,12 @@ h3 { font-size: 1.45rem; line-height: 1.15; letter-spacing: -.03em; }
 .summary-copy {
   --pad: clamp(22px, 6vw, 96px);
   position: sticky; top: var(--band, 50vh); width: min(1180px, calc(100vw - var(--pad) * 2)); margin: 0 auto; padding: 0 0 3vh;
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 1.4rem 3.5rem; align-items: start;
+  display: grid; grid-template-columns: var(--col-a, minmax(0, 1fr)) minmax(0, 1.4fr); row-gap: 1.4rem; column-gap: var(--col-gap, 3.5rem); align-items: start;
 }
+/* the Kiwi heading is the bench he sits on: one line across both columns, opened under his legs (--seat-a, --seat-gap from
+   journey.js); the columns below open where his feet swing (--col-a, --col-gap), so his feet never cover a word */
+.seat-line { grid-column: 1 / -1; display: grid; grid-template-columns: var(--seat-a, minmax(0, 1fr)) var(--seat-gap, 3.5rem) minmax(0, 1.4fr); align-items: start; margin: 0 0 var(--seat-drop, .2rem); }
+.seat-a { text-align: right; }
 /* the jobs he signs for run two abreast here, so the copy stays short and he keeps more of the window */
 .summary-copy .signed { grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); }
 .summary-hold { height: 95vh; }
@@ -379,7 +356,7 @@ h3 { font-size: 1.45rem; line-height: 1.15; letter-spacing: -.03em; }
   .summary-head { top: auto; bottom: 5vh; left: 22px; right: 22px; width: auto; }
   .summary-read { padding-top: 0; }
   .summary-hold { display: none; }
-  .summary-copy, [data-summary="flow"] .summary-copy { position: relative; top: auto; width: auto; grid-template-columns: 1fr; gap: 1.6rem; padding: 40px 22px 2rem; margin: 0; background: linear-gradient(transparent, var(--bg) 40px); }
+  .summary-copy, [data-summary="flow"] .summary-copy { position: relative; top: auto; width: auto; grid-template-columns: 1fr; gap: 1.6rem; padding: max(40px, var(--seat-rise, 40px)) 22px 2rem; margin: 0; background: linear-gradient(transparent, var(--bg) 40px); }
   .summary-copy::before { content: none; }
 }
 
@@ -388,6 +365,5 @@ h3 { font-size: 1.45rem; line-height: 1.15; letter-spacing: -.03em; }
   .js .copy > *, .js .summary-head > *, .js .blocks i.is-lit, .falls i { transition: none; opacity: 1; transform: none; }
   .js .signed path { transition: none; stroke-dashoffset: 0; }
   .thing canvas { transition: none; }
-  .stage-note .typed::after, .crt-line span::after { animation: none; }
-  .crt-line span { transition: none; }
+  .stage-note .typed::after { animation: none; }
 }

@@ -27,17 +27,13 @@
     <a class="skip-link" href="#main">Skip to content</a>
 
     <div class="stage" aria-hidden="true">
-      <div class="crt" id="crt">
-        <div class="crt-body">
-          <div class="crt-glass"><canvas></canvas><p class="crt-line"><span></span></p></div>
-          <i class="crt-power"></i>
-        </div>
-        <div class="crt-foot"></div>
-      </div>
       <canvas id="stage-canvas"></canvas>
       <img class="stage-fallback" src="assets/relit-headshot.jpg" alt="" width="1122" height="1402" loading="lazy">
       <p class="stage-note" id="stage-note"></p>
     </div>
+
+    <!-- Aryan in the summary (js/aryan.js): over the words, so he can sit on them; under the things -->
+    <canvas class="aryan" id="aryan" aria-hidden="true"></canvas>
 
     <header class="site-header">
       <a class="brand" href="#top" aria-label="Aryan Mehta, home">
@@ -177,7 +173,7 @@
         </div>
       </section>
 
-      <section class="chapter summary" id="about" data-state="crt" data-side="centre" data-anchor="top" data-rail="The person" data-note="Mostly, other people." aria-labelledby="about-title">
+      <section class="chapter summary" id="about" data-state="desk" data-side="centre" data-anchor="top" data-rail="The person" data-note="Mostly, other people." aria-labelledby="about-title">
         <div class="summary-first">
           <div class="summary-head">
             <p class="label">The person behind the projects</p>
@@ -186,6 +182,7 @@
         </div>
         <div class="summary-read">
         <div class="copy summary-copy">
+          <h3 class="seat-line" aria-label="At a small company, one name signs for most things."><span class="seat-a">At a small company,</span><span class="seat-gap"></span><span class="seat-b">one name signs for most things.</span></h3>
           <div>
             <p class="body">At Kiwi, that meant writing the roadmap, hiring engineers, talking to suppliers, and testing and packing the watches we shipped myself.</p>
             <p class="body">It also meant sitting with elderly users and helping them get comfortable with a new device. <strong>The model only helps if they keep the watch on.</strong></p>
@@ -194,7 +191,6 @@
             <button class="text-link" data-story="path" type="button">The path so far <span aria-hidden="true">↗</span></button>
           </div>
           <div class="asset asset-signed">
-            <h3>At a small company, one name signs for most things.</h3>
             <ul class="signed" id="signed" aria-label="Jobs at Kiwi Senior Health that Aryan does himself"></ul>
           </div>
         </div>
@@ -367,7 +363,7 @@
       <p>B.S. Computer Engineering, Penn State, with minors in cybersecurity and economics.</p>
     </template>
     <noscript>
-      <style>.text-link[data-story],.toggle,.motion-toggle,.rail,.shelf,.stage-note,.object-slot,.table-scene,.crt{display:none}.stage-fallback{display:block}</style>
+      <style>.text-link[data-story],.toggle,.motion-toggle,.rail,.shelf,.stage-note,.object-slot,.table-scene,.aryan{display:none}.stage-fallback{display:block}</style>
     </noscript>
   </body>
 </html>

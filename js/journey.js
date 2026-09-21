@@ -1,6 +1,7 @@
 // Scroll drives what Aryan is made of; everything else here is the small per-chapter
 // assets, the case-study reader and the motion control.
 import { createStage } from './stage.js';
+import { SCENE } from './aryan.js';
 
 document.documentElement.classList.add('js');
 
@@ -19,7 +20,8 @@ const isSmall = () => innerWidth <= 820;
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const lerp = (a, b, t) => a + (b - a) * t;
 const summaryCopy = document.querySelector('.summary-copy'), summaryHead = document.querySelector('.summary-head'), summaryHold = document.querySelector('.summary-hold');
-const HEADER = 92, CRT_ASPECT = 1.12;   // the room the header takes, and the monitor's width against its height (journey.css)
+const seatLine = document.querySelector('.seat-line');
+const HEADER = 92;   // the room the header takes
 const onScreen = (r) => r.bottom > 0 && r.top < innerHeight;
 // value at p along a list of [p, value] stops, eased between them
 const along = (p, stops) => {
@@ -38,10 +40,21 @@ for (const c of chapters) {
 }
 
 let marks = [], copyPadEnd = 0, noteH = 0;
-// the summary: the monitor and the things keep the top of the window (down to band) and the copy stops under them.
+// the summary: Aryan at his desk and the things keep the top of the window (down to band) and the copy stops under them.
 // dock: 0 on the summary's first screen, 1 once they have drawn up to make room; leave: 0..1 as he melts and goes;
-// at: where the monitor stands this frame (its middle, its size against full, its height); pin: whether the copy holds
-const summary = { dock: 0, leave: 0, pin: false, band: 0, at: { x: 0, y: 0, s: 1, h: 0 }, first: { x: 0, y: 0, h: 0 }, docked: { y: 0, h: 0 } };
+// scene: where his scene (js/aryan.js) stands this frame ({x, y}: its corner, s: CSS px per unit), lerped from first to docked;
+// at: where his desk stands, for the things (its middle, and the height they are spaced by); arrived: the copy is held under him
+const summary = { dock: 0, leave: 0, pin: false, band: 0, arrived: false, xh: 0,
+  scene: { x: 0, y: 0, s: 1 }, first: { x: 0, y: 0, s: 1 }, docked: { x: 0, y: 0, s: 1 }, at: { x: 0, y: 0, s: 1, h: 0 } };
+// where the tops of the small letters of the Kiwi heading sit below its top: that is his seat
+const ruler = document.createElement('canvas').getContext('2d');
+function xHeightTop() {
+  const cs = getComputedStyle(seatLine);
+  ruler.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const m = ruler.measureText('x'), line = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.15;
+  return (line - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent - m.actualBoundingBoxAscent;
+}
+let measuring = 0;
 function measure() {
   noteH = note.offsetHeight;
   copyPadEnd = parseFloat(getComputedStyle(summaryCopy).paddingBottom) || 0;
@@ -51,13 +64,29 @@ function measure() {
   summary.band = Math.min(free, innerHeight * 0.53);
   document.documentElement.dataset.summary = summary.pin ? 'pin' : 'flow';
   document.documentElement.style.setProperty('--band', `${summary.band.toFixed(1)}px`);
-  // the monitor: large in the upper middle of the first screen, clear of the heading; smaller, under the header, while the copy is read
-  const head = summaryHead.getBoundingClientRect();
-  const h = isSmall() ? Math.min(innerHeight * 0.4, (innerWidth - 44) / CRT_ASPECT) : Math.min(innerHeight * 0.47, innerWidth * 0.4 / CRT_ASPECT);
-  summary.first = { h, y: (isSmall() ? HEADER : innerHeight * 0.125) + h / 2, x: isSmall() ? innerWidth / 2 : Math.max(innerWidth / 2, head.right + 30 + h * CRT_ASPECT / 2) };
-  const hd = Math.min(h, summary.band - HEADER - 40);
-  summary.docked = { h: hd, y: HEADER + hd / 2 };
-  document.documentElement.style.setProperty('--crt-h', `${h.toFixed(1)}px`);
+  // his scene. On the summary's first screen the desk stands large in the upper middle, clear of the heading. Once the copy holds,
+  // the line he sits on lands on the tops of the heading's small letters and his centre line on the window's, with his hair
+  // clear of the top of the window when he stands up. On a phone he is only ever seated, on the heading as it scrolls
+  const head = summaryHead.getBoundingClientRect(), [d0, d1, d2, d3] = SCENE.desk;
+  const h = Math.min(innerHeight * 0.47, innerWidth * 0.4 / 1.12), sF = 0.8 * h / (d3 - d1);
+  const fx = Math.max(innerWidth / 2, head.right + 30 + (d2 - d0) * sF / 2), fy = innerHeight * 0.125 + (d3 - d1) * sF / 2;
+  summary.first = { x: fx - (d0 + d2) / 2 * sF, y: fy - (d1 + d3) / 2 * sF, s: sF };
+  summary.xh = xHeightTop();
+  const seatY = summary.band + seatLine.offsetTop + summary.xh;
+  const sD = isSmall() ? Math.min(0.42, innerWidth / 930) : Math.max(0.3, Math.min(sF, (seatY - 24) / (SCENE.seat - SCENE.top)));
+  summary.docked = { x: innerWidth / 2 - SCENE.cx * sD, y: seatY - SCENE.seat * sD, s: sD };
+  // the heading opens where his legs hang, and the columns under it where his feet swing; the right side of both starts together
+  const cs = getComputedStyle(summaryCopy), left = summaryCopy.getBoundingClientRect().left + (parseFloat(cs.paddingLeft) || 0);
+  const at = (u) => innerWidth / 2 + (u - SCENE.cx) * sD;
+  const legL = at(SCENE.legs[0]) - 10, footL = at(SCENE.swing[0]) - 10, right = at(Math.max(SCENE.legs[1], SCENE.swing[1])) + 10;
+  const drop = isSmall() ? Math.max(0, summary.xh + (SCENE.seated[3] - SCENE.seat) * sD + 14 - seatLine.offsetHeight) : 3;
+  const rise = isSmall() ? (SCENE.seat - SCENE.seated[1]) * sD - summary.xh + 16 : 0;   // on a phone the copy makes room above the heading for him
+  const vars = { '--seat-a': Math.max(0, legL - left), '--seat-gap': right - legL, '--col-a': Math.max(0, footL - left), '--col-gap': right - footL, '--seat-drop': drop, '--seat-rise': rise };
+  let changed = false;
+  for (const [k, v] of Object.entries(vars)) {
+    if (Math.abs((parseFloat(summaryCopy.style.getPropertyValue(k)) || -1) - v) > 0.5) { summaryCopy.style.setProperty(k, `${v.toFixed(1)}px`); changed = true; }
+  }
+  if (changed && measuring < 2) { measuring++; measure(); measuring--; return; }
   const max = document.documentElement.scrollHeight - innerHeight;
   marks = chapters.map((c, i) => {
     const top = c.el.offsetTop, mid = top + c.el.offsetHeight / 2;
@@ -106,7 +135,7 @@ function anchor(c) {
 }
 
 // Chapter order is fixed by the page: 0 hero (pixels), 1 context (the wax melt), 2 forecasting and
-// 3 MIT (characters: numbers, then symbols), 4 cubes, 5 bricks, 6 the summary (he is in a monitor), 7 his face through the pixels.
+// 3 MIT (characters: numbers, then symbols), 4 cubes, 5 bricks, 6 the summary (his own clips, js/aryan.js), 7 his face through the pixels.
 // Between versions the cells break into points and re-gather. Each change owns a real stretch of scroll.
 function apply(view, real) {
   // on a phone the copy slides up over him, so every change has to finish while he is still in the clear
@@ -134,22 +163,26 @@ function apply(view, real) {
   view.end = s(6.72, 6.98) * home;
   view.disperse = Math.max(1 - s(1.1, 1.4), view.end);
   view.photo = p > 6 ? 1 : 0;
-  // the summary's monitor and the things draw up into the top of the window before the first words come up, and stay there
-  // while the copy holds under them. Through the last of that hold his picture melts down the glass and breaks into points;
-  // only then does the copy go on up, through the room he has left, and the points gather into the last version of him
+  // in the summary he and the things draw up into the top of the window before the first words come up, and stay there while
+  // the copy holds under him; he walks down onto its heading and sits. Through the last of that hold he melts and breaks into
+  // points; only then does the copy go on up, through the room he has left, and the points gather into the last version of him
   const words = copyBox.top / innerHeight, holdBox = summaryHold.getBoundingClientRect();
   const held = summary.pin ? 1 - Math.min(1, Math.max(0, (holdBox.bottom - copyBox.bottom) / Math.max(1, holdBox.height))) : 0;
   summary.dock = summary.pin ? 1 - smooth(0.92, 1.28, words) : 0;
   summary.leave = isSmall() ? s(6.25, 6.5) : summary.pin ? smooth(0.5, 0.97, held) : 1 - smooth(0.72, 1.02, words);
-  view.crt = s(5.55, 5.85);
+  view.him = s(5.55, 5.85);
   view.drip = s(5.7, 5.9) * smooth(0.3, 0.85, summary.leave);
-  const d = smooth(0, 1, summary.dock);
-  summary.at.x = lerp(summary.first.x, innerWidth / 2, d); summary.at.y = lerp(summary.first.y, summary.docked.y, d);
-  summary.at.h = lerp(summary.first.h, summary.docked.h, d); summary.at.s = summary.at.h / summary.first.h;
+  const d = smooth(0, 1, summary.dock), a = summary.first, b = summary.docked, sc = summary.scene;
+  if (isSmall()) { sc.s = b.s; sc.x = b.x; sc.y = seatLine.getBoundingClientRect().top + summary.xh - SCENE.seat * b.s; }
+  else { sc.s = lerp(a.s, b.s, d); sc.x = lerp(a.x, b.x, d); sc.y = lerp(a.y, b.y, d); }
+  summary.arrived = summary.pin && copyBox.top <= summary.band + 2;
+  const [d0, d1, d2, d3] = SCENE.desk;
+  summary.at.x = sc.x + (d0 + d2) / 2 * sc.s; summary.at.y = sc.y + (d1 + d3) / 2 * sc.s;
+  summary.at.h = (d3 - d1) * sc.s / 0.8; summary.at.s = sc.s / a.s;
   const wordsBox = { left: copyBox.left, right: copyBox.right, top: copyBox.top, bottom: copyBox.bottom - copyPadEnd };
   // in the summary the head line is the screen's own text, and the next one waits until the copy has cleared its place
   const noteBox = note.getBoundingClientRect();
-  note.classList.toggle('is-under', chapters[Math.round(real)].state === 'crt' || (!isSmall() && noteBox.bottom > wordsBox.top - 24 && noteBox.top < wordsBox.bottom + 24));
+  note.classList.toggle('is-under', chapters[Math.round(real)].state === 'desk' || (!isSmall() && noteBox.bottom > wordsBox.top - 24 && noteBox.top < wordsBox.bottom + 24));
   // the summary's heading scrolls up through the place the things draw up into, so it goes as they come
   summaryHead.style.opacity = (1 - smooth(0.1, 0.55, summary.dock)).toFixed(3);
   stage.keepOut(onScreen(wordsBox) ? wordsBox : null, onScreen(headBox) && summary.dock < 0.55 ? headBox : null, noteBox);
@@ -179,7 +212,7 @@ function apply(view, real) {
 
 const stage = await createStage(document.getElementById('stage-canvas')).catch((error) => { console.error(error); return null; });
 if (!stage) document.documentElement.classList.add('no-stage');
-let things = null, crt = null;
+let things = null, aryan = null;
 if (stage) {
   measure();
   eased = target = position();
@@ -189,16 +222,17 @@ if (stage) {
     apply(stage.view, eased);
     window.__journey?.override?.(stage.view);   // lets shots/ hold a state still
     things?.update(eased, summary);
-    stage.glass(crt?.update(stage.view.crt, things?.focus(), summary.at, summary.leave) ?? null, summary.leave);
+    stage.glass(aryan?.update({ weight: stage.view.him, scene: summary.scene, arrived: summary.arrived, leave: summary.leave, focus: things?.focus() ?? null, small: isSmall() }) ?? null, summary.leave);
     placeNote(stage.view);
     requestAnimationFrame(tick);
   };
   tick();
   addEventListener('resize', measure);
   new ResizeObserver(measure).observe(document.body);
+  document.fonts?.ready.then(measure);
   if (reduced.matches) stage.setMotion(false);
 }
-window.__journey = { position: () => eased, target: () => position(), chapters: chapters.map((c) => c.id) }; // read by shots/shoot-journey.mjs
+window.__journey = { position: () => eased, target: () => position(), chapters: chapters.map((c) => c.id), aryan: () => aryan?.state(), summary }; // read by shots/
 
 // reveal
 const io = new IntersectionObserver((entries) => {
@@ -326,13 +360,13 @@ toggle.addEventListener('click', () => {
   toggle.textContent = paused ? 'Resume motion' : 'Pause motion';
   stage?.setMotion(!paused);
   things?.setMotion(!paused);
-  crt?.setMotion(!paused);
+  aryan?.setMotion(!paused);
 });
 
-// the monitor he is in for the summary, and the things he made: shelf at the side, flying into their chapters, gathered around him there
+// Aryan himself for the summary, and the things he made: shelf at the side, flying into their chapters, gathered around him there
 if (stage) {
-  import('./crt.js').then((m) => m.createCrt(document.getElementById('crt'), document.getElementById('about').dataset.note, reduced.matches))
-    .then((c) => { crt = c; if (toggle.getAttribute('aria-pressed') === 'true') crt?.setMotion(false); }).catch((error) => console.error(error));
+  import('./aryan.js').then((m) => m.createAryan(document.getElementById('aryan'), reduced.matches))
+    .then((c) => { aryan = c; if (toggle.getAttribute('aria-pressed') === 'true') aryan?.setMotion(false); }).catch((error) => console.error(error));
   import('./things.js').then((m) => m.createThings({ stage, chapters, openStory, reduced: reduced.matches }))
     .then((t) => { things = t; things.region(weeks.dataset.kind); things.setTheme(document.documentElement.dataset.theme === 'light'); })
     .catch((error) => console.error(error));
