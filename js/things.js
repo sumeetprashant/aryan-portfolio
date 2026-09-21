@@ -7,13 +7,14 @@ const BLUE = '#7b93f5', DEEP = '#2c45c9', BONE = '#ece9e2', TAU = Math.PI * 2;
 const INK = { rgb: '236,233,226', solid: BONE, page: '#0a0b0e', butter: '#f0d264', sage: '185,210,149', light: false };
 
 const DEFS = [
-  // table: where it stands around his monitor on the summary's first screen. dx, dy: from the monitor's middle, in monitor heights;
+  // table: where it stands around him on the summary's first screen. dx, dy: from the middle of the room he floats in, in its heights;
   // s: its size there at 1440 by 900 (it grows and shrinks with the window); z: how much it drifts
   // dock: where it stands, in the same measure, once he and the things have drawn up into the top of the window above the copy
+  // (the two on the right stand clear of where he gathers on his feet and sets off)
   { key: 'globe', name: 'The forecasts', story: 'forecast', chapter: 'forecast', w: 132, h: 132, table: { dx: -0.98, dy: 0.74, z: 0.45, s: 2 }, dock: { dx: -0.84, dy: 0.2 } },
   { key: 'packets', name: 'The privacy study', story: 'privacy', chapter: 'research', w: 240, h: 96, table: { dx: 1.02, dy: -0.4, z: 0.6, s: 1.4 }, dock: { dx: -1.02, dy: -0.27 } },
-  { key: 'drone', name: 'The drone rig', story: 'capstone', chapter: 'engineering', w: 250, h: 250, table: { dx: 1.14, dy: 0.27, z: 0.75, s: 1.2 }, dock: { dx: 0.88, dy: -0.14 } },
-  { key: 'watch', name: 'The Kiwi watch', story: 'kiwi', chapter: 'kiwi', w: 128, h: 160, table: { dx: 0.5, dy: 0.96, z: 0.9, s: 1.5 }, dock: { dx: 1.24, dy: 0.2 } },
+  { key: 'drone', name: 'The drone rig', story: 'capstone', chapter: 'engineering', w: 250, h: 250, table: { dx: 1.14, dy: 0.27, z: 0.75, s: 1.2 }, dock: { dx: 1.38, dy: -0.12 } },
+  { key: 'watch', name: 'The Kiwi watch', story: 'kiwi', chapter: 'kiwi', w: 128, h: 160, table: { dx: 0.5, dy: 0.96, z: 0.9, s: 1.5 }, dock: { dx: 1.86, dy: 0.22 } },
 ];
 const DOCK_SIZE = 0.5;   // their size above the copy, against their size on the table
 const REACH = 130;       // how near the pointer has to come, at 1440 by 900, for him and the thing to notice

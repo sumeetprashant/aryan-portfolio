@@ -67,7 +67,7 @@ function measure() {
   // his scene. On the summary's first screen the desk stands large in the upper middle, clear of the heading. Once the copy holds,
   // the line he sits on lands on the tops of the heading's small letters and his centre line on the window's, with his hair
   // clear of the top of the window when he stands up. On a phone he is only ever seated, on the heading as it scrolls
-  const head = summaryHead.getBoundingClientRect(), [d0, d1, d2, d3] = SCENE.desk;
+  const head = summaryHead.getBoundingClientRect(), [d0, d1, d2, d3] = SCENE.float;
   const h = Math.min(innerHeight * 0.47, innerWidth * 0.4 / 1.12), sF = 0.8 * h / (d3 - d1);
   const fx = Math.max(innerWidth / 2, head.right + 30 + (d2 - d0) * sF / 2), fy = innerHeight * 0.125 + (d3 - d1) * sF / 2;
   summary.first = { x: fx - (d0 + d2) / 2 * sF, y: fy - (d1 + d3) / 2 * sF, s: sF };
@@ -178,7 +178,7 @@ function apply(view, real) {
   if (isSmall()) { sc.s = b.s; sc.x = b.x; sc.y = seatLine.getBoundingClientRect().top + summary.xh - SCENE.seat * b.s; }
   else { sc.s = lerp(a.s, b.s, d); sc.x = lerp(a.x, b.x, d); sc.y = lerp(a.y, b.y, d) + (summary.pin ? Math.min(0, copyBox.top - summary.band) : 0); }
   summary.arrived = summary.pin && copyBox.top <= summary.band + 2;
-  const [d0, d1, d2, d3] = SCENE.desk;
+  const [d0, d1, d2, d3] = SCENE.float;
   summary.at.x = sc.x + (d0 + d2) / 2 * sc.s; summary.at.y = sc.y + (d1 + d3) / 2 * sc.s;
   summary.at.h = (d3 - d1) * sc.s / 0.8; summary.at.s = sc.s / a.s;
   const wordsBox = { left: copyBox.left, right: copyBox.right, top: copyBox.top, bottom: copyBox.bottom - copyPadEnd };
@@ -224,6 +224,7 @@ if (stage) {
     apply(stage.view, eased);
     window.__journey?.override?.(stage.view);   // lets shots/ hold a state still
     things?.update(eased, summary);
+    if (eased > 4.4) aryan?.wake();   // his clips are only fetched once the summary comes near
     const him = aryan?.update({ weight: stage.view.him, scene: summary.scene, arrived: summary.arrived, leave: summary.leave, focus: things?.focus() ?? null, small: isSmall() }) ?? null;
     stage.glass(him, summary.leave);
     const open = (him?.open ?? 0).toFixed(3);
