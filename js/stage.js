@@ -404,6 +404,9 @@ void main(){
   vec2 uv = (px - uCenter) / vec2(uScale * ASPECT, uScale) + .5;
   vec2 gq = (uv - vec2(.5, .36)) * vec2(ASPECT * 1.45, 1.);
   o = vec4(mix(DEEP, BLUE, .35), 1.) * mix(.10, .05, uLight) * uGlow * exp(-dot(gq, gq) * 6.5);
+  // so faint a glow steps visibly in 8 bits: a grain of noise under one step breaks the rings up
+  vec3 n = fract(sin(vec3(dot(px, vec2(12.9898, 78.233)), dot(px, vec2(39.346, 11.135)), dot(px, vec2(73.156, 52.235)))) * 43758.5453);
+  o.rgb += (n - .5) * (1.5 / 255.) * step(1e-4, o.a);
 }`;
 
 // loose pieces: cubes while he is pixels, bricks while he is Lego. Ray-traced boxes with studs.

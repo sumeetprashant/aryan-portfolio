@@ -276,7 +276,8 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
       t.back += ((attended && attended !== t && t.mode === 'table' && canHover ? 1 : 0) - t.back) * 0.12;
       const e = fading ? 1 : k * k * (3 - 2 * k), hop = Math.sin(e * Math.PI);
       let x = lerp(a.x, b.x, e), y = lerp(a.y, b.y, e) - hop * (boxed ? 90 : 0) - t.lift * 10, s = lerp(a.s, b.s, e) * (1 + t.lift * 0.12);
-      let opacity = (1 - 0.45 * t.back) * (fading ? 1 - summary.leave : 1);
+      // as he breaks into points so do they: js/aryan.js draws their points from these canvases, and the things themselves step out
+      let opacity = (1 - 0.45 * t.back) * (fading ? (summary.points && t.ctx ? (summary.leave > 0.07 ? 0 : 1) : 1 - summary.leave) : 1);   // the watch is drawn by WebGL and cannot be read back, so it fades
       if (!boxed) { x = b.x; y = b.y - t.lift * 10; s = b.s * (0.72 + 0.28 * e) * (1 + t.lift * 0.12); opacity *= e; }
       const still = 1 - 0.6 * dock;
       const tilt = t.mode === 'table' && roomy ? `perspective(900px) rotateX(${(-my * 9 * t.table.z * still).toFixed(2)}deg) rotateY(${(mx * 13 * t.table.z * still).toFixed(2)}deg) ` : '';
@@ -307,6 +308,8 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
   return {
     update,
     // what he should look at: the thing that has his attention (see attend) and its name for his screen, or null for the pointer
+    // where each stands at the table, for the points they break into
+    boxes() { return things.filter((t) => t.ctx && (t.mode === 'table' || t.mode === 'flight')).map((t) => ({ canvas: t.canvas, x: t.at.x - t.w * t.at.s / 2, y: t.at.y - t.h * t.at.s / 2, w: t.w * t.at.s, h: t.h * t.at.s })); },
     focus() { return attended ? { x: attended.at.x, y: attended.at.y, name: attended.name } : null; },
     region(kind) { things[0].painter.region(kind); },
     setMotion(on) { live = on && !reduced; },

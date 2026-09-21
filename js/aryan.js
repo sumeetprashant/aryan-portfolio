@@ -38,7 +38,7 @@ const SWAP = 0.12;                  // the float clip hands over to rise.mp4 on 
 // it the pixel is his and stays. Lone pixels left by the video's flicker inside the desk go too
 const KEY = `
 uniform sampler2D uRef;
-uniform float uMask;
+uniform float uMask, uPlain;
 float greener(vec3 c){ return c.g - max(c.r, c.b); }
 const ivec2 RING[12] = ivec2[12](ivec2(3,0), ivec2(-3,0), ivec2(0,3), ivec2(0,-3), ivec2(2,2), ivec2(-2,2), ivec2(2,-2), ivec2(-2,-2),
   ivec2(1,0), ivec2(-1,0), ivec2(0,1), ivec2(0,-1));
@@ -50,6 +50,7 @@ float his(sampler2D tex, ivec2 p){
 vec4 keyed(sampler2D tex, vec2 t){
   ivec2 n = textureSize(tex, 0), p = clamp(ivec2(t * vec2(n)), ivec2(0), n - 1);
   vec4 c = texelFetch(tex, p, 0);
+  if (uPlain > .5) return vec4(c.rgb, step(.12, c.a));   // a thing's own canvas: nothing to key
   float g = greener(c.rgb), edge = 0.;
   for (int i = 0; i < 12; i++) edge = max(edge, step(.09, greener(texelFetch(tex, clamp(p + RING[i], ivec2(0), n - 1), 0).rgb)));
   float a = edge > .5 ? step(g, -.004) : step(g, .03);
@@ -198,6 +199,7 @@ export async function createAryan(canvas, reduced) {
   let live = !reduced, awake = false, phase = phone ? 'seat' : 'float', mode = 'work', walkDir = 1, lookT = 0, swap = 0, open = 0, last = performance.now(), shown = false;
   const walkEnd = () => (walk.v.duration || 8) - 0.05;
 
+  const thingTex = new Map();
   function stopAll() { for (const l of all) if (!l.v.paused) l.v.pause(); }
 
   // the phase follows the page: floating until the copy has arrived under him; then his points go over to him standing (swap, 0..1),
@@ -268,11 +270,12 @@ export async function createAryan(canvas, reduced) {
     }
   }
 
+  // a video is briefly without a frame at its loop's seam or during a seek: he keeps his last frame then, so he never blinks
   function upload(l) {
-    if (l.v.readyState < 2) return false;
     gl.bindTexture(gl.TEXTURE_2D, l.tex);
+    if (l.v.readyState < 2 || l.v.seeking) return !!l.has;
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, l.v);
-    return true;
+    return (l.has = true);
   }
 
   function draw(l, p, dpr, W, H, bob) {
@@ -285,7 +288,7 @@ export async function createAryan(canvas, reduced) {
       gl.uniform4f(u.uQuad, ox + x * s, oy + y * s, w * s, h * s);
       gl.uniform4f(u.uRect, x, y, w, h);
       gl.uniform2f(u.uOrigin, ox, oy); gl.uniform1f(u.uScale, s);
-      gl.uniform1f(u.uAlpha, l.a); gl.uniform1f(u.uMask, l.mask ? 1 : 0);
+      gl.uniform1f(u.uAlpha, l.a); gl.uniform1f(u.uMask, l.mask ? 1 : 0); gl.uniform1f(u.uPlain, 0);
       gl.uniform1f(u.uBlock, SCENE.block * s >= 2 ? SCENE.block : 0);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       return;
@@ -295,7 +298,7 @@ export async function createAryan(canvas, reduced) {
     gl.uniform2f(u.uRes, W, H); gl.uniform2f(u.uOrigin, ox, oy); gl.uniform1f(u.uScale, s);
     gl.uniform4f(u.uRect, x, y, w, h); gl.uniform4f(u.uBox, bx0, by0, bx1, by1);
     gl.uniform1f(u.uCols, cols); gl.uniform1f(u.uRows, rows); gl.uniform1f(u.uBlock, B);
-    gl.uniform1f(u.uAlpha, l.a); gl.uniform1f(u.uMask, l.mask ? 1 : 0); gl.uniform1f(u.uProg, prog);
+    gl.uniform1f(u.uAlpha, l.a); gl.uniform1f(u.uMask, l.mask ? 1 : 0); gl.uniform1f(u.uPlain, 0); gl.uniform1f(u.uProg, prog);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, cols * rows);
   }
 
@@ -314,7 +317,7 @@ export async function createAryan(canvas, reduced) {
       const W = Math.round(innerWidth * dpr), H = Math.round(innerHeight * dpr);
       if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
       // he is never faded or cut in: he gathers from points and leaves as points. With motion off he is there, or he is not
-      const gone = live ? Math.max(1 - smooth(0, 1, p.weight), smooth(0, 1, p.leave)) : p.weight < 0.5 || p.leave > 0.5 ? 1 : 0;
+      const gone = live ? Math.max(1 - smooth(0.04, 0.96, p.weight), smooth(0.06, 1, p.leave)) : p.weight < 0.5 || p.leave > 0.5 ? 1 : 0;
       if (gone >= 0.999 || !awake) {
         if (shown) { gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); shown = false; stopAll(); open = 0; }
         return null;
@@ -328,6 +331,19 @@ export async function createAryan(canvas, reduced) {
       // floating, he bobs a little (the page's doing, not the clip's); not once he stands, and not with motion off
       const bob = live ? Math.sin(now / 4000 * 6.2832) * 5 : 0;
       for (const l of all) draw(l, p, dpr, W, H, bob);
+      // the things around him break into points with him (p.things: their canvases and where they stand, in CSS px)
+      if (live && gone > 0.001 && p.leave > 0) for (const t of p.things || []) {
+        let tex = thingTex.get(t.canvas);
+        if (!tex) thingTex.set(t.canvas, tex = texture(gl));
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        if (!tex.done || gone < 0.05) { try { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, t.canvas); tex.done = true; } catch { continue; } }
+        gl.useProgram(dots.p); const u = dots.u, B = 2, cols = Math.ceil(t.w / B), rows = Math.ceil(t.h / B);
+        gl.uniform2f(u.uRes, W, H); gl.uniform2f(u.uOrigin, 0, 0); gl.uniform1f(u.uScale, dpr);
+        gl.uniform4f(u.uRect, t.x, t.y, t.w, t.h); gl.uniform4f(u.uBox, t.x, t.y, t.x + t.w, t.y + t.h);
+        gl.uniform1f(u.uCols, cols); gl.uniform1f(u.uRows, rows); gl.uniform1f(u.uBlock, B);
+        gl.uniform1f(u.uAlpha, 1); gl.uniform1f(u.uMask, 0); gl.uniform1f(u.uPlain, 1); gl.uniform1f(u.uProg, gone);
+        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, cols * rows);
+      }
       const seated = phase === 'seat' || (phase === 'walk' && walk.v.currentTime > 5.8);
       const walked = phase === 'seat' ? 1 : phase === 'walk' ? smooth(1.5, walkEnd(), walk.v.currentTime) : 0;
       return { ...boxOf(seated ? SCENE.seated : SCENE.floating, p), open, walked };

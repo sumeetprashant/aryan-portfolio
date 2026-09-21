@@ -40,7 +40,7 @@ for (const c of chapters) {
   rail.append(a);
 }
 
-let marks = [], copyPadEnd = 0, noteH = 0;
+let marks = [], copyPadEnd = 0, noteH = 0, paused = false;
 // the summary: Aryan at his desk and the things keep the top of the window (down to band) and the copy stops under them.
 // dock: 0 on the summary's first screen, 1 once they have drawn up to make room; leave: 0..1 as he melts and goes;
 // scene: where his scene (js/aryan.js) stands this frame ({x, y}: its corner, s: CSS px per unit), lerped from first to docked;
@@ -229,7 +229,8 @@ if (stage) {
     window.__journey?.override?.(stage.view);   // lets shots/ hold a state still
     things?.update(eased, summary);
     if (eased > 4.4) aryan?.wake();   // his clips are only fetched once the summary comes near
-    const him = aryan?.update({ hold: summary.hold, weight: stage.view.him, scene: summary.scene, arrived: summary.arrived, leave: summary.leave, focus: things?.focus() ?? null, small: isSmall() }) ?? null;
+    summary.points = !!aryan && !reduced.matches && !paused;
+    const him = aryan?.update({ things: summary.leave > 0 && !isSmall() ? things?.boxes() : null, hold: summary.hold, weight: stage.view.him, scene: summary.scene, arrived: summary.arrived, leave: summary.leave, focus: things?.focus() ?? null, small: isSmall() }) ?? null;
     stage.glass(him, summary.leave);
     // the row the things come down into beside him: how far he has walked, the line he sits on, and his seated width
     summary.row = him && !isSmall() ? { p: him.walked, y: summary.scene.y + SCENE.seat * summary.scene.s, u: (SCENE.seated[2] - SCENE.seated[0]) * summary.scene.s } : null;
@@ -367,7 +368,7 @@ setTheme(document.documentElement.dataset.theme || 'dark', false);
 // motion control
 const toggle = document.getElementById('motion-toggle');
 toggle.addEventListener('click', () => {
-  const paused = toggle.getAttribute('aria-pressed') !== 'true';
+  paused = toggle.getAttribute('aria-pressed') !== 'true';
   toggle.setAttribute('aria-pressed', String(paused));
   toggle.textContent = paused ? 'Resume motion' : 'Pause motion';
   stage?.setMotion(!paused);
