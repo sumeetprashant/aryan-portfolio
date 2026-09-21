@@ -115,6 +115,7 @@ export function createWatch(canvas) {
 
   let W = 0, H = 0, px = 0, py = 0, sx = 0, sy = 0, clock = performance.now();
   let tumble = 0, drop = 0, vy = 0, spin = 0;
+  let calm = 0;
   function render(now) {
     const w = canvas.clientWidth, h = canvas.clientHeight;
     if (!w || !h) return;
@@ -131,12 +132,15 @@ export function createWatch(canvas) {
     if (face === 'idle') drop += (0 - drop) * Math.min(1, dt * 4), vy = drop > -0.01 ? 0 : vy;
     spin *= Math.pow(0.04, dt); tumble += spin * dt; tumble += (Math.round(tumble / TAU) * TAU - tumble) * Math.min(1, dt * 3);
     const tt = now * 0.001;
-    watch.position.y = drop + Math.sin(tt * 0.9) * 0.05;
-    watch.rotation.set(0.1 + Math.sin(tt * 0.7) * 0.04 + sy * 0.35 + tumble, -0.5 + Math.sin(tt * 0.5) * 0.1 + sx * 0.7, 0.06 - sx * 0.06);
+    // calm (0..1): in the row beside him it stands still; it only sways and follows the pointer out on the table
+    const k = 1 - calm;
+    watch.position.y = drop + Math.sin(tt * 0.9) * 0.05 * k;
+    watch.rotation.set(0.1 + (Math.sin(tt * 0.7) * 0.04 + sy * 0.35) * k + tumble, -0.5 + (Math.sin(tt * 0.5) * 0.1 + sx * 0.7) * k, 0.06 - sx * 0.06 * k);
     drawFace(now);
     renderer.render(scene, camera);
   }
   return {
+    setCalm(v) { calm = v; },
     render,
     pointer(x, y) { px = x; py = y; },
     fall() { if (face !== 'idle') return; face = 'alert'; faceT = 0; vy = 2.2; spin = -13; },

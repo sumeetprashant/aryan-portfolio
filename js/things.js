@@ -17,7 +17,7 @@ const DEFS = [
   { key: 'watch', name: 'The Kiwi watch', story: 'kiwi', chapter: 'kiwi', w: 128, h: 160, table: { dx: 0.5, dy: 0.96, z: 0.9, s: 1.5 }, dock: { dx: 1.86, dy: 0.22 } },
 ];
 // where each stands in the row beside him (x: from the centre line, in his seated widths) and its turn to come down (n)
-const LINE = { globe: { x: -1.5, n: 1 }, packets: { x: -2.75, n: 3 }, watch: { x: 1.4, n: 0 }, drone: { x: 2.55, n: 2 } };
+const LINE = { globe: { x: -1.5, n: 1 }, packets: { x: -2.75, n: 3 }, watch: { x: 1.4, n: 0, up: 0.16 }, drone: { x: 2.55, n: 2 } };   // up: the watch's strap hangs below its box, so it stands that much higher (in its heights)
 const DOCK_SIZE = 0.5;   // their size above the copy, against their size on the table
 const REACH = 130;       // how near the pointer has to come, at 1440 by 900, for him and the thing to notice
 const RES = 2;   // the canvases are drawn at twice their box, so they stay sharp at table size
@@ -248,7 +248,7 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
       const wSlot = t.ci < 0 ? 0 : 1 - smooth(0.4, 0.6, Math.abs(p - t.ci));
       const k = Math.max(wSlot, wTable), toTable = wTable >= wSlot;
       const a = fit(t.home.getBoundingClientRect(), t);
-      let b = a;
+      let b = a; t.calm = 0; t.lined = false;
       if (k > 0.001) {
         if (!toTable) b = fit(t.slot.getBoundingClientRect(), t);
         else if (roomy) {
@@ -261,10 +261,10 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
           // as he walks down they come down after him, one by one, and line up beside him on the same line of letters he sits on:
           // the things he signed for, in a row with him
           const row = summary.row, f = row ? smooth(LINE[t.key].n * 0.16, LINE[t.key].n * 0.16 + 0.5, row.p) : 0;
-          t.lined = f > 0.9;
+          t.lined = f > 0.9; t.calm = f;
           if (f > 0) {
             const s2 = sz * 0.78, arc = Math.sin(f * Math.PI) * 40;
-            b = { x: lerp(b.x, innerWidth / 2 + LINE[t.key].x * row.u, f), y: lerp(b.y, row.y - t.h * s2 / 2 - 2, f) - arc, s: lerp(sz, s2, f) };
+            b = { x: lerp(b.x, innerWidth / 2 + LINE[t.key].x * row.u, f), y: lerp(b.y, row.y - t.h * s2 * (0.5 + (LINE[t.key].up || 0)) - 2, f) - arc, s: lerp(sz, s2, f) };
           }
         } else b = fit(t.seat.getBoundingClientRect(), t);
       }
@@ -279,7 +279,7 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
       // as he breaks into points so do they: js/aryan.js draws their points from these canvases, and the things themselves step out
       let opacity = (1 - 0.45 * t.back) * (fading ? (summary.points && t.ctx ? (summary.leave > 0.07 ? 0 : 1) : 1 - summary.leave) : 1);   // the watch is drawn by WebGL and cannot be read back, so it fades
       if (!boxed) { x = b.x; y = b.y - t.lift * 10; s = b.s * (0.72 + 0.28 * e) * (1 + t.lift * 0.12); opacity *= e; }
-      const still = 1 - 0.6 * dock;
+      const still = (1 - 0.6 * dock) * (1 - (t.calm || 0));   // in the row beside him they stand still; hover still lifts them
       const tilt = t.mode === 'table' && roomy ? `perspective(900px) rotateX(${(-my * 9 * t.table.z * still).toFixed(2)}deg) rotateY(${(mx * 13 * t.table.z * still).toFixed(2)}deg) ` : '';
       t.el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) ${tilt}rotate(${(hop * (t.i % 2 ? -14 : 14)).toFixed(1)}deg) scale(${s.toFixed(4)}) translate(-50%,-50%)`;
       t.el.style.setProperty('--s', s.toFixed(3));   // the name under it stays one size whatever the thing's scale
@@ -299,7 +299,7 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
       const active = t.mode !== 'shelf' || frame % 20 === t.i || t.seen < 0;
       if (!active || opacity < 0.01) continue;
       t.seen = frame;
-      if (t.key === 'watch') { watch?.render(now); continue; }
+      if (t.key === 'watch') { watch?.setCalm(t.calm || 0); watch?.render(now); continue; }
       const c = t.ctx; c.setTransform(dpr * RES, 0, 0, dpr * RES, 0, 0); c.clearRect(0, 0, t.w, t.h);
       t.painter.draw(c, t.w, t.h, now, dt, live && t.mode !== 'shelf');
     }
