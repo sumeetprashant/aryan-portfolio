@@ -294,7 +294,7 @@ h3 { font-size: 1.45rem; line-height: 1.15; letter-spacing: -.03em; }
 .seat-a { text-align: right; }
 /* the jobs he signs for run two abreast here, so the copy stays short and he keeps more of the window */
 .summary-copy .signed { grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); }
-.summary-hold { height: 70vh; }
+.summary-hold { height: 110vh; }
 /* a window too short to hold both: the copy simply scrolls, and he has gone before it arrives */
 [data-summary="flow"] .summary-copy { position: relative; top: auto; padding-bottom: 30vh; }
 [data-summary="flow"] .summary-hold { display: none; }

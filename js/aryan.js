@@ -210,6 +210,11 @@ export async function createAryan(canvas, reduced) {
       walkDir = p.arrived ? 1 : -1;
       if (walkDir > 0) {
         swap = Math.min(1, swap + dt / SWAP);
+        // his walk keeps pace with the scroll: the further the visitor is through the hold, the further along he must be (he hurries
+        // to catch up), and if the copy moves on before he is down he is simply seated: nothing of him is ever left behind up there
+        const due = walkEnd() * smooth(0.05, 0.8, p.hold);
+        walk.v.playbackRate = walk.v.currentTime < due - 0.3 ? 3 : 1;
+        if (p.leave > 0.01 || p.hold >= 0.98) walk.v.currentTime = walkEnd();
         if (walk.v.ended || walk.v.currentTime >= walkEnd()) { phase = 'seat'; sit.v.currentTime = 0; }
       } else if (walk.v.currentTime <= T0 + 0.04) {
         swap = Math.max(0, swap - dt / SWAP);
@@ -299,7 +304,7 @@ export async function createAryan(canvas, reduced) {
   return {
     // the summary is coming: fetch his clips now
     wake() { if (awake) return; awake = true; for (const l of all) { l.v.preload = 'auto'; l.v.load(); } },
-    // p: { weight (0..1: the room's points gathering into him), scene ({x, y, s}: where the scene's corner stands, in CSS px, and
+    // p: { hold (0..1: how far the visitor has scrolled through the copy's hold), weight (0..1: the room's points gathering into him), scene ({x, y, s}: where the scene's corner stands, in CSS px, and
     // CSS px per unit), arrived (the copy is held under him), leave (0..1 as he breaks into points and goes), focus (the thing
     // with attention, or null), small (a phone) }. Returns the box he fills on the page and how far the heading is open for
     // his legs (open, 0..1), or null while he is away

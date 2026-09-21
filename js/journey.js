@@ -21,6 +21,7 @@ const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a
 const lerp = (a, b, t) => a + (b - a) * t;
 const summaryCopy = document.querySelector('.summary-copy'), summaryHead = document.querySelector('.summary-head');
 const seatLine = document.querySelector('.seat-line');
+const summaryRead = document.querySelector('.summary-read'), summaryHold = document.querySelector('.summary-hold');
 const HEADER = 92;   // the room the header takes
 const onScreen = (r) => r.bottom > 0 && r.top < innerHeight;
 // value at p along a list of [p, value] stops, eased between them
@@ -178,6 +179,9 @@ function apply(view, real) {
   if (isSmall()) { sc.s = b.s; sc.x = b.x; sc.y = seatLine.getBoundingClientRect().top + summary.xh - SCENE.seat * b.s; }
   else { sc.s = lerp(a.s, b.s, d); sc.x = lerp(a.x, b.x, d); sc.y = lerp(a.y, b.y, d) + (summary.pin ? Math.min(0, copyBox.top - summary.band) : 0); }
   summary.arrived = summary.pin && copyBox.top <= summary.band + 2;
+  // how far the visitor is through the hold: what is left of it is how far the copy's box still is from the end of its track
+  const holdH = summaryHold.offsetHeight || 1;
+  summary.hold = summary.arrived ? Math.min(1, Math.max(0, 1 - (summaryRead.getBoundingClientRect().bottom - copyBox.bottom) / holdH)) : 0;
   const [d0, d1, d2, d3] = SCENE.float;
   summary.at.x = sc.x + (d0 + d2) / 2 * sc.s; summary.at.y = sc.y + (d1 + d3) / 2 * sc.s;
   summary.at.h = (d3 - d1) * sc.s / 0.8; summary.at.s = sc.s / a.s;
@@ -225,7 +229,7 @@ if (stage) {
     window.__journey?.override?.(stage.view);   // lets shots/ hold a state still
     things?.update(eased, summary);
     if (eased > 4.4) aryan?.wake();   // his clips are only fetched once the summary comes near
-    const him = aryan?.update({ weight: stage.view.him, scene: summary.scene, arrived: summary.arrived, leave: summary.leave, focus: things?.focus() ?? null, small: isSmall() }) ?? null;
+    const him = aryan?.update({ hold: summary.hold, weight: stage.view.him, scene: summary.scene, arrived: summary.arrived, leave: summary.leave, focus: things?.focus() ?? null, small: isSmall() }) ?? null;
     stage.glass(him, summary.leave);
     const open = (him?.open ?? 0).toFixed(3);
     if (open !== seatOpen) { seatOpen = open; seatLine.style.setProperty('--seat-open', open); }
