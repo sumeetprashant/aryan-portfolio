@@ -1,9 +1,9 @@
 // Aryan in the summary: his own pixel-art clips, made on Sumeet's machine against a green screen, cut out here
 // and drawn straight onto the page. The room's points gather into him, floating cross-legged in the upper middle,
 // working on his laptop while the visitor meets the things (he turns his head toward the one that has attention).
-// When the copy arrives he breaks into points that gather again as him standing, and he walks down, sits on the
-// letters of the Kiwi heading and keeps working; as the copy goes on up he rides up with it and breaks into
-// points himself. There is no desk any more: the one inside the walk clip is cut out (DESK). One scene of 1920 x 1080 units.
+// When the copy arrives he uncrosses his legs, gets to his feet, walks down, sits on the letters of the Kiwi heading
+// and keeps working (rise.mp4 starts on the very picture he floats in); as the copy goes on up he rides up with it
+// and breaks into points. One scene of 1920 x 1080 units.
 export const SCENE = {
   cx: 960,                          // his centre line
   seat: 863,                        // the line he sits on (fitted to the tops of the letters)
@@ -23,14 +23,13 @@ export const SCENE = {
 const CLIPS = {
   work: { src: 'assets/clips/float-work.mp4', rect: [601, 156, 699, 399.5], loop: true, box: [828, 180, 1077, 516], floats: true },
   look: { src: 'assets/clips/float-look.mp4', rect: [601, 156, 699, 399.5], box: [828, 180, 1077, 516], floats: true },
-  walk: { src: 'assets/clips/walk.mp4', win: [0, 0, 1920, 1080], crop: [432, 24, 592, 704], box: [617, 26, 1463, 1032], mask: true },
+  walk: { src: 'assets/clips/rise.mp4', win: [0, 0, 1920, 1080], crop: [524, 58, 430, 668], box: [748, 74, 1363, 1029] },
   sit: { src: 'assets/clips/sit.mp4', win: [504, 569, 880, 495], crop: [0, 0, 1344, 768], loop: true, box: [790, 620, 1070, 1012] },
 };
 const LOOK = [1.25, 2.0, 3.5];      // float-look.mp4: looking to screen-left, straight out, to screen-right
 const FADE = 0.12;                  // cross-fades between clips, seconds
-const T0 = 2.4;                     // walk.mp4: from here on he stands clear of where the desk was
-const SWAP = 1.0;                   // seconds for the points to go from him floating to him standing
-const DESK = 'assets/clips/walk-desk.png';   // the desk alone, as it stands in every frame of walk.mp4 (same size as the clip)
+const T0 = 0;                       // rise.mp4 starts floating, exactly as the float clips do
+const SWAP = 0.12;                  // the float clip hands over to rise.mp4 on the same picture
 
 // the green screen: a pixel is keyed by how much greener than red and blue it is. The video's compression smears the
 // green a few pixels into him (a dark green or olive rim), so within three pixels of the green the test is absolute:
@@ -191,16 +190,8 @@ export async function createAryan(canvas, reduced) {
   const phone = matchMedia('(max-width: 820px)').matches, layers = {};
   for (const [name, c] of Object.entries(CLIPS)) if (!phone || name === 'sit') layers[name] = { ...c, v: video(c.src, c.loop), tex: texture(gl), rect: rectOf(c), a: 0, want: 0, prog: 1 };
   const all = Object.values(layers), { work, look, walk, sit } = layers;
-  // the desk alone, to cut it out of the walk clip; on texture unit 1 for good
-  const ref = texture(gl);
-  if (walk) {
-    const img = new Image();
-    img.src = DESK;
-    await img.decode();
-    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, ref);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-    gl.activeTexture(gl.TEXTURE0);
-  }
+  const ref = texture(gl);   // the mask slot, unused now (uMask stays 0)
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, ref); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4)); gl.activeTexture(gl.TEXTURE0);
   for (const pr of [quad, dots]) { gl.useProgram(pr.p); gl.uniform1i(pr.u.uTex, 0); gl.uniform1i(pr.u.uRef, 1); }
 
   const hover = matchMedia('(hover: hover)').matches;
