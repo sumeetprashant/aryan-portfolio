@@ -8,6 +8,11 @@ const chapters = [...document.querySelectorAll('.chapter')].map((el) => ({
   el, id: el.id, state: el.dataset.state, side: el.dataset.side, note: el.dataset.note, rail: el.dataset.rail, anchor: el.dataset.anchor,
 }));
 const note = document.getElementById('stage-note');
+// the head line is being tried in two places until Sumeet picks one: above his hair, or (?note=bottom) under his bust, typed out
+const noteAt = new URLSearchParams(location.search).get('note') === 'bottom' ? 'bottom' : 'top';
+document.documentElement.dataset.note = noteAt;
+note.innerHTML = '<span class="typed"></span><span class="untyped"></span>';
+const HAIR_TOP = 0.125, FELT_TOP = 0.07;   // where his hair starts: in the portrait's frame, and in the felt character's
 const rail = document.getElementById('rail');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const isSmall = () => innerWidth <= 820;
@@ -31,8 +36,14 @@ for (const c of chapters) {
   rail.append(a);
 }
 
-let marks = [], copyPad = 0, copyPadEnd = 0;
+let marks = [], copyPad = 0, copyPadEnd = 0, noteH = 0;
+// the summary's copy shares the screen with the felt character: he and the things stand in a column this wide on the right
+const summary = { dock: 0, leave: 0, desk: 0, dockX: 0 };
 function measure() {
+  summary.desk = Math.max(300, Math.min(720, innerWidth * 0.33));
+  summary.dockX = innerWidth - summary.desk / 2 - 20;
+  document.documentElement.style.setProperty('--desk', `${summary.desk}px`);
+  noteH = note.offsetHeight;
   copyPad = parseFloat(getComputedStyle(summaryCopy).paddingTop) || 0;   // the beat before the summary's first words
   copyPadEnd = parseFloat(getComputedStyle(summaryCopy).paddingBottom) || 0;
   const max = document.documentElement.scrollHeight - innerHeight;
@@ -54,7 +65,28 @@ function position() {
   return i + Math.min(1, Math.max(0, f));
 }
 
-let target = 0, eased = 0, activeNote = -1;
+let target = 0, eased = 0, activeNote = -1, noteY = -1, typing = 0;
+// above his head the line is simply there; under him it is typed, with the rest of it holding the room so it never shifts
+function say(text) {
+  const [typed, rest] = note.children, id = ++typing;
+  if (noteAt === 'top' || reduced.matches) { typed.textContent = text; rest.textContent = ''; noteH = note.offsetHeight; return; }
+  let n = 0;
+  const step = () => {
+    if (id !== typing) return;
+    typed.textContent = text.slice(0, n); rest.textContent = text.slice(n);
+    if (n++ < text.length) setTimeout(step, 34);
+  };
+  step(); noteH = note.offsetHeight;
+}
+// it stands a little above his hair, never under the header; or a little under his bust, never off the window
+function placeNote(view) {
+  const gap = innerHeight * 0.03, f = smooth(0.3, 0.7, view.felt), box = f > 0 ? feltEl.getBoundingClientRect() : null;
+  const top = lerp(stage.place(0.5, HAIR_TOP)[1], box ? box.top + box.height * FELT_TOP : 0, f);
+  const bottom = lerp(stage.place(0.5, view.bust)[1], box ? box.bottom : 0, f);
+  // on a phone his hair starts under the header and the copy covers his chest, so the line takes the nearest clear place: tight under the header, or on his shoulders
+  const y = noteAt === 'top' ? Math.max(isSmall() ? 80 : 92, top - gap - noteH) : isSmall() ? innerHeight * 0.385 : Math.min(innerHeight * 0.95 - noteH, bottom + gap * 0.5);
+  if (Math.abs(y - noteY) > 0.5) { noteY = y; note.style.setProperty('--ny', `${y.toFixed(1)}px`); }
+}
 // the portrait sits in the middle of whatever the copy column leaves free
 function anchor(c) {
   if (isSmall() || c.side === 'centre') return 0.5;
@@ -86,18 +118,19 @@ function apply(view, real) {
   // he comes back only once the summary's copy has left the window, so nothing ever crosses the words
   const copyBox = summaryCopy.getBoundingClientRect(), headBox = summaryHead.getBoundingClientRect();
   const copyEnd = isSmall() ? 0 : (copyBox.bottom - innerHeight * 0.3) / innerHeight;
-  const home = smooth(0.55, 0.2, copyEnd);
+  const home = smooth(0.3, 0.06, copyEnd);
   view.regather = s(6.32, 6.92) * home;
   view.end = s(6.72, 6.98) * home;
   view.disperse = Math.max(1 - s(1.1, 1.4), view.end);
   view.photo = p > 6 ? 1 : 0;
-  note.classList.toggle('is-under', !isSmall() && copyEnd > 0.02 && copyBox.top < innerHeight * -0.06);   // the copy is passing under the head line
-  // the summary's character steps back as the first words come up: he breaks into points that stay in the room
-  // around the copy, and he is gone before the words reach him
+  // the summary's character steps aside before the first words come up and stands beside them, smaller, with the things,
+  // for as long as they are read. As the copy leaves he breaks into points, and the points gather into the last version of him
   const words = isSmall() ? 2 : (copyBox.top + copyPad) / innerHeight;
-  const here = smooth(1.02, 1.13, words);
-  view.felt = s(5.55, 5.85) * (1 - s(6.25, 6.5)) * here;
-  view.dust = s(5.7, 5.9) * (1 - here);
+  summary.dock = isSmall() ? 0 : 1 - smooth(1.04, 1.26, words);
+  summary.leave = isSmall() ? s(6.25, 6.5) : smooth(0.46, 0.26, copyEnd);
+  view.felt = s(5.55, 5.85) * (1 - summary.leave);
+  view.dust = s(5.7, 5.9) * summary.leave;
+  note.classList.toggle('is-under', summary.dock > 0.25 && Math.round(real) === chapters.length - 2);   // the head line waits while he stands beside the copy
   const wordsBox = { left: copyBox.left, right: copyBox.right, top: copyBox.top + copyPad, bottom: copyBox.bottom - copyPadEnd };
   stage.keepOut(onScreen(wordsBox) ? wordsBox : null, onScreen(headBox) ? headBox : null, note.getBoundingClientRect());
   stage.feltBox(feltEl.getBoundingClientRect());
@@ -118,7 +151,7 @@ function apply(view, real) {
   if (near !== activeNote) {
     activeNote = near;
     note.classList.remove('is-in');
-    setTimeout(() => { note.textContent = chapters[near].note; note.dataset.kind = chapters[near].state; note.classList.add('is-in'); }, 260);
+    setTimeout(() => { note.dataset.kind = chapters[near].state; say(chapters[near].note); note.classList.add('is-in'); }, 260);
     for (const a of rail.children) a.toggleAttribute('aria-current', a.dataset.id === chapters[near].id);
     document.documentElement.dataset.chapter = chapters[near].id;
     document.documentElement.dataset.copy = chapters[near].side === 'left' ? 'left' : 'right';
@@ -136,8 +169,9 @@ if (stage) {
     eased = reduced.matches ? target : eased + (target - eased) * 0.14;
     apply(stage.view, eased);
     window.__journey?.override?.(stage.view);   // lets shots/ hold a state still
-    things?.update(eased);
-    felt?.update(stage.view.felt, things?.focus());
+    things?.update(eased, summary);
+    felt?.update(stage.view.felt, things?.focus(), summary.dock, summary.dockX);
+    placeNote(stage.view);
     requestAnimationFrame(tick);
   };
   tick();

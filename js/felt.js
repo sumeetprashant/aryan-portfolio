@@ -1,18 +1,32 @@
 // The felt character in the summary. He looks at whatever the visitor is looking at: the pointer, or the
-// thing under it (js/things.js names that point), or on a phone the thing nearest the middle of the screen.
+// thing nearest it (js/things.js names that point), or on a phone the thing nearest the middle of the screen.
 // Once the head-turn clip exists (assets/felt-look.mp4, see scripts/prep_felt_clip.mjs) it is never played:
 // the point he is looking at scrubs currentTime, and the next seek waits for 'seeked' so seeks never flood.
-// Until then the still does the work: his pupils are their own layer (scripts/prep_stage.py) and travel inside
-// the eye whites, the eyes lead, and the head leans after them.
+// Until then the still does the work. His eyes were blanked in scripts/prep_stage.py and are drawn here: an iris
+// with its pupil, held inside the eye opening by a mask, under the shadow of the lid, with a catch-light that
+// stays where the light is while the iris moves. The eyes lead, and the head leans after them.
 import clip from '../assets/felt-clip.js';
 import eyesAt from '../assets/felt-eyes.js';
 
+const TRAVEL = 0.62;        // how much of the room inside the opening the iris uses: never wide-eyed
+const LIFT = 0.2;           // the iris rests a little high, its top under the upper lid: white showing above it is what reads as startled
+const DOCK_SCALE = 0.62;    // his size while he stands beside the summary's copy
+const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
 export function createFelt(root, section, reduced) {
-  const video = root.querySelector('video'), pupils = [...root.querySelectorAll('.felt-eyes i')];
+  const video = root.querySelector('video'), irises = [...root.querySelectorAll('.felt-irises i')], glints = [...root.querySelectorAll('.felt-glint')];
   const hover = matchMedia('(hover: hover)').matches;
   let ready = false, seeking = false, target = 0;
   let px = innerWidth * 0.75, py = innerHeight * 0.4;   // until the pointer moves he looks where the still was drawn looking
-  let gx = 0.8, gy = 0, hx = 0, hy = 0, W = 0;
+  let gx = 0.8, gy = 0, hx = 0, hy = 0, near = 0;
+
+  // the eyes are laid out once, in fractions of his frame, so they hold at any size
+  for (const [k, v] of Object.entries(eyesAt.colours)) root.style.setProperty(`--${k}`, `rgb(${v.join(',')})`);
+  eyesAt.eyes.forEach((e, i) => {
+    const d = e.pr * 2;
+    Object.assign(irises[i].style, { width: `${d * 100}%`, left: `${(e.cx - e.pr) * 100}%`, top: `${(e.cy - e.ry * LIFT - e.pr * 1.5) * 100}%` });   // the frame is 3:2, so a width is half as much again of its height
+    Object.assign(glints[i].style, { width: `${d * 20}%`, left: `${(e.cx - e.rx * 0.36) * 100}%`, top: `${(e.cy - e.ry * 0.56) * 100}%` });
+  });
 
   function seek() {
     if (!ready || seeking || Math.abs(video.currentTime - target) < 1 / 60) return;
@@ -32,11 +46,12 @@ export function createFelt(root, section, reduced) {
 
   return {
     // focus: the point on screen of the thing he should look at, or null to follow the pointer
-    update(weight, focus) {
+    // dock: 0 in the middle of the stage, 1 beside the summary's copy; dockX: where his middle stands then
+    update(weight, focus, dock = 0, dockX = innerWidth / 2) {
       root.style.opacity = weight.toFixed(3);
       root.style.visibility = weight < 0.01 ? 'hidden' : 'visible';
       if (weight < 0.01) return;
-      const w = root.offsetWidth, h = root.offsetHeight, box = root.getBoundingClientRect();
+      const box = root.getBoundingClientRect();
       const at = focus ?? (hover ? { x: px, y: py } : { x: innerWidth / 2, y: innerHeight * 0.4 });
       // where he is looking, from between his eyes: -1..1 each way, full reach a third of the window away
       const ex = box.left + box.width * (eyesAt.eyes[0].cx + eyesAt.eyes[1].cx) / 2, ey = box.top + box.height * (eyesAt.eyes[0].cy + eyesAt.eyes[1].cy) / 2;
@@ -47,24 +62,23 @@ export function createFelt(root, section, reduced) {
       const ke = reduced ? 1 : 0.2, kh = reduced ? 1 : 0.07;
       gx += (tx - gx) * ke; gy += (ty - gy) * ke;
       hx += (tx - hx) * kh; hy += (ty - hy) * kh;
+      near += (1 - smooth(0.12, 0.45, Math.hypot(at.x - ex, at.y - ey) / innerHeight) - near) * ke;
 
       if (ready) look(0.5 + hx * 0.5);
-      else {
-        if (w !== W) {
-          W = w;
-          const size = 2 * eyesAt.eyes[0].pr * w / eyesAt.sprite;
-          for (const p of pupils) { p.style.width = p.style.height = `${size.toFixed(1)}px`; p.style.margin = `${(-size / 2).toFixed(1)}px`; }
-        }
-        pupils.forEach((p, i) => {
-          const e = eyesAt.eyes[i], prY = e.pr * 1.5;   // the frame is 3:2, so a radius is half as much again of its height
-          // both pupils take the same offset, so he never goes cross-eyed; they may tuck a little under the lids, as they did in the still
-          const x = (e.cx + gx * (e.rx - e.pr * 0.62)) * w, y = (e.cy + gy * (e.ry - prY * 0.72)) * h;
-          p.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
-        });
-      }
+      else irises.forEach((iris, i) => {
+        const e = eyesAt.eyes[i], prY = e.pr * 1.5;
+        // both take the same offset; on something close they turn in a little toward each other
+        const ox = gx * (e.rx - e.pr * 0.8) * TRAVEL + (i ? -1 : 1) * near * e.rx * 0.1, oy = gy * (e.ry - prY * 0.8) * TRAVEL * (gy < 0 ? 0.9 : 0.4);   // he looks up freely, and down mostly with his head
+        // it sits on a ball: toward the rim it is seen edge on, so it narrows along the way it has gone
+        const far = Math.min(1, Math.hypot(ox / (e.rx - e.pr * 0.8), oy / (e.ry - prY * 0.8))), turn = Math.atan2(oy * 1.5, ox);
+        iris.style.transform = `translate(${(ox / (e.pr * 2) * 100).toFixed(1)}%, ${(oy / (prY * 2) * 100).toFixed(1)}%) rotate(${turn.toFixed(3)}rad) scaleX(${(1 - 0.24 * far * far).toFixed(3)}) rotate(${(-turn).toFixed(3)}rad)`;
+        // and the pupil rides toward the side he is looking to, as it does in the picture he was cut from
+        iris.firstElementChild.style.transform = `translate(${(gx * 13).toFixed(1)}%, ${(gy * 10).toFixed(1)}%)`;
+      });
       // with the clip his head does the turning, so the frame only drifts; the still leans from the shoulders
-      const reach = ready ? 10 : 34, lean = ready ? 0 : 3.6;
-      root.style.transform = `translate3d(calc(-50% + ${(hx * reach).toFixed(1)}px), ${(hy * 10 + (1 - weight) * 40).toFixed(1)}px, 0) rotate(${(hx * lean).toFixed(2)}deg) scale(${(0.94 + 0.06 * weight).toFixed(3)})`;
+      const reach = (ready ? 10 : 30) * (1 - 0.5 * dock), lean = ready ? 0 : 3.6;
+      const size = (0.94 + 0.06 * weight) * (1 + (DOCK_SCALE - 1) * dock);
+      root.style.transform = `translate3d(calc(-50% + ${(dock * (dockX - innerWidth / 2) + hx * reach).toFixed(1)}px), ${(hy * 10 + (1 - weight) * 40).toFixed(1)}px, 0) rotate(${(hx * lean).toFixed(2)}deg) scale(${size.toFixed(3)})`;
     },
   };
 }

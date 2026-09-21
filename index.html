@@ -33,7 +33,11 @@
     </div>
     <div class="felt" id="felt" aria-hidden="true">
       <img src="assets/felt-still.webp" alt="" width="1536" height="1024" loading="lazy">
-      <div class="felt-eyes"><i></i><i></i></div>
+      <div class="felt-eyes">
+        <div class="felt-irises"><i><b></b></i><i><b></b></i></div>
+        <img class="felt-shade" src="assets/felt-eyes-shade.webp" alt="" width="1536" height="1024" loading="lazy">
+        <span class="felt-glint"></span><span class="felt-glint"></span>
+      </div>
       <video muted playsinline preload="auto" tabindex="-1"></video>
     </div>
 
@@ -53,8 +57,8 @@
       <section class="chapter hero" id="top" data-state="pixels" data-side="left" data-rail="Aryan" data-note="What is Aryan made of?" aria-labelledby="hero-title">
         <div class="copy">
           <h1 id="hero-title"><span>Aryan</span><span>Mehta.</span></h1>
-          <p class="lede">Deep in the technology.<br>Closer to the people.</p>
-          <p class="body">I build products, lead teams, and stay close to the problems worth solving. Every project rebuilt me a little.</p>
+          <p class="lede">Computer engineer.<br>Founding product manager at Kiwi.</p>
+          <p class="body">I ran research teams at MIT and Harvard. Now I help run Kiwi Senior Health, which makes a health watch for older adults. Each job rebuilt me a little.</p>
           <a class="scroll-link" href="#story">The work so far <span aria-hidden="true">↓</span></a>
           <p class="chips" aria-hidden="true"><i></i><i></i><i></i><i></i></p>
         </div>
@@ -63,10 +67,10 @@
       <section class="chapter" id="story" data-state="melt" data-side="right" data-rail="Context" data-note="An engineer’s training." aria-labelledby="intro-title">
         <div class="copy">
           <p class="label">A little context</p>
-          <h2 id="intro-title">The interesting part is where the disciplines meet.</h2>
-          <p class="body">I trained as a computer engineer. Research took me into AI privacy at MIT and disease forecasting at Harvard.</p>
-          <p class="body">At Kiwi Senior Health, I helped take a wearable from an idea to people’s wrists, then stepped into interim co-CEO responsibilities.</p>
-          <p class="body">Each of these put me close enough to a problem to build something that helps. Each one also took me apart a little and put me back together better.</p>
+          <h2 id="intro-title">Engineering, then research, then a startup.</h2>
+          <p class="body">I trained as a computer engineer at Penn State. At MIT I studied where AI chatbots send their traffic. At Harvard I worked on dengue forecasting.</p>
+          <p class="body">At Kiwi Senior Health I helped take a wearable from an idea to people’s wrists. Since July 2026 I have shared interim co-CEO responsibilities with the founder.</p>
+          <p class="body">Each one took me apart a little and put me back together.</p>
           <ul class="places">
             <li><b>Penn State</b><span>Computer engineering</span></li>
             <li><b>MIT</b><span>AI privacy research</span></li>
@@ -79,9 +83,9 @@
       <section class="chapter style-signal" id="forecast" data-state="ascii" data-side="left" data-rail="Forecasting" data-note="Five weeks of warning." aria-labelledby="forecast-title">
         <div class="copy">
           <p class="label">Prognosis & Harvard / Disease forecasting</p>
-          <h2 id="forecast-title">A head start can change what’s next.</h2>
-          <p class="body">Dengue doesn’t wait for a dashboard. Public-health teams need time to act.</p>
-          <p class="body">Two related chapters in my work used satellite imagery and machine learning to help turn environmental signals into earlier warning.</p>
+          <h2 id="forecast-title">Dengue forecasts, five weeks ahead.</h2>
+          <p class="body">Public-health teams can only act on a dengue outbreak if they see it coming.</p>
+          <p class="body">I worked on this twice, once as a founder and once in a Harvard research group. Both projects used satellite imagery and machine learning.</p>
           <figure class="asset asset-signal">
             <div class="with-object">
               <div class="object-slot" data-slot="globe"></div>
@@ -96,31 +100,31 @@
             </div>
             <figcaption id="forecast-context">I founded Prognosis and led a seven-person team. The platform was adopted by public-health agencies across three Indian states.</figcaption>
           </figure>
-          <button class="text-link" data-story="forecast" type="button">Explore both chapters <span aria-hidden="true">↗</span></button>
+          <button class="text-link" data-story="forecast" type="button">Both projects <span aria-hidden="true">↗</span></button>
         </div>
       </section>
 
       <section class="chapter style-ascii" id="research" data-state="ascii" data-side="right" data-rail="MIT" data-note="One stubborn question." aria-labelledby="privacy-title">
         <div class="copy">
           <p class="label">MIT / AI privacy research</p>
-          <h2 id="privacy-title">A private chat. An unexpected audience.</h2>
-          <p class="body">What happens beyond the chat window? I led a research team tracing network traffic from commercial AI tools to find out.</p>
-          <p class="body">The study found that 9-36% of captured requests from four platforms went to third-party domains, raising questions about AI use in healthcare.</p>
+          <h2 id="privacy-title">A private chat also calls third parties.</h2>
+          <p class="body">I led a research team at MIT that traced the network traffic of commercial AI chatbots.</p>
+          <p class="body">Across four platforms, 9-36% of the requests we captured went to third-party domains. That matters when people bring health questions to a chatbot.</p>
           <figure class="asset asset-ascii">
             <div class="object-slot wide" data-slot="packets"></div>
             <pre id="ascii-chart" aria-label="Third-party request rates in the 2025 study: Grok 35.9%, Claude 14.0%, ChatGPT 13.7%, Gemini 9.0%"></pre>
             <figcaption>1,839 HTTP / HTTPS requests captured. Historical measurements, not a live audit. Request destinations do not establish what conversation content was shared.</figcaption>
           </figure>
           <p class="footnote">Co-authored with Leo Anthony Celi (MIT) and Joseph Sakran (Johns Hopkins).</p>
-          <button class="text-link" data-story="privacy" type="button">Follow the research <span aria-hidden="true">↗</span></button>
+          <button class="text-link" data-story="privacy" type="button">Read the study <span aria-hidden="true">↗</span></button>
         </div>
       </section>
 
       <section class="chapter style-voxel" id="engineering" data-state="voxels" data-side="left" data-rail="Lockheed" data-note="A rig built for 150 lb." aria-labelledby="capstone-title">
         <div class="copy">
           <p class="label">Penn State × Lockheed Martin / Sponsored capstone</p>
-          <h2 id="capstone-title">Back to the nuts. And bolts. And physics.</h2>
-          <p class="body">A six-person team, a $1,250 budget, and a rig to measure the mass properties of UAVs up to 150 lb. I led the project and built the embedded software.</p>
+          <h2 id="capstone-title">A rig that weighs a drone and times its swing.</h2>
+          <p class="body">Six students and $1,250 to build a rig that measures the mass properties of UAVs up to 150 lb. I led the project and wrote the embedded software.</p>
           <figure class="asset asset-rig">
             <div class="rig">
               <div class="object-slot square" data-slot="drone"></div>
@@ -140,14 +144,14 @@
             <div><b>6 people</b><span>One hardware & software team</span></div>
             <div><b>$71.89</b><span>Left in the materials budget</span></div>
           </div>
-          <button class="text-link" data-story="capstone" type="button">See how it came together <span aria-hidden="true">↗</span></button>
+          <button class="text-link" data-story="capstone" type="button">How we built it <span aria-hidden="true">↗</span></button>
         </div>
       </section>
 
       <section class="chapter style-blocks" id="kiwi" data-state="blocks" data-side="right" data-rail="Kiwi" data-note="368 recorded falls." aria-labelledby="kiwi-title">
         <div class="copy">
           <p class="label">Kiwi Senior Health / Product & machine learning</p>
-          <h2 id="kiwi-title">A little watch. A lot riding on it.</h2>
+          <h2 id="kiwi-title">Fall detection on a wrist.</h2>
           <p class="body">A fall detector has to know the difference between a wrist moving and a person needing help.</p>
           <figure class="asset asset-falls">
             <div class="with-object">
@@ -159,7 +163,7 @@
             </div>
             <figcaption>I ran the program that recorded them: 10 participants, 81.2 hours of labeled motion. Tap the watch to drop it.</figcaption>
           </figure>
-          <p class="body">I owned the model, the product, and the messy path between them. Sixty-nine model configurations later, we had something ready to run on the watch.</p>
+          <p class="body">I owned the model and the product around it. After 69 model configurations, one was good enough to run on the watch.</p>
           <figure class="asset asset-blocks" aria-label="Wrist-posture false alarms: 91.7% with raw acceleration, 0.2% with motion signals">
             <div class="grid-pair">
               <div><div class="blocks" data-lit="92"></div><p><b>91.7%</b>Raw acceleration</p></div>
@@ -171,7 +175,7 @@
             <div><b>0.990</b><span>Model AUC on held-out participants</span></div>
             <div><b>4 pilots</b><span>Signed within a month of the product launch</span></div>
           </div>
-          <button class="text-link" data-story="kiwi" type="button">Inside the work <span aria-hidden="true">↗</span></button>
+          <button class="text-link" data-story="kiwi" type="button">Read the case study <span aria-hidden="true">↗</span></button>
         </div>
       </section>
 
@@ -184,14 +188,14 @@
         </div>
         <div class="copy summary-copy">
           <div>
-            <p class="body">At Kiwi, that meant writing the roadmap, hiring engineers, talking to suppliers, and personally testing and packing the watches we shipped.</p>
-            <p class="body">It also meant sitting with elderly users and helping them get comfortable with a new device. <strong>A better model is only useful if someone wants to wear it.</strong></p>
-            <p class="body">In July 2026, I stepped into interim co-CEO responsibilities alongside the founder. The scope grew. The instinct stayed the same: understand the details, take responsibility, and keep things moving.</p>
-            <p class="footnote">B.S. Computer Engineering, Penn State. Minors in cybersecurity and economics. A habit of crossing disciplines.</p>
+            <p class="body">At Kiwi, that meant writing the roadmap, hiring engineers, talking to suppliers, and testing and packing the watches we shipped myself.</p>
+            <p class="body">It also meant sitting with elderly users and helping them get comfortable with a new device. <strong>The model only helps if they keep the watch on.</strong></p>
+            <p class="body">In July 2026 I took on interim co-CEO responsibilities, shared with the founder. I still check every watch before it ships.</p>
+            <p class="footnote">B.S. Computer Engineering, Penn State. Minors in cybersecurity and economics.</p>
             <button class="text-link" data-story="path" type="button">The path so far <span aria-hidden="true">↗</span></button>
           </div>
           <div class="asset asset-signed">
-            <h3>Small company. One name keeps showing up.</h3>
+            <h3>At a small company, one name signs for most things.</h3>
             <ul class="signed" id="signed" aria-label="Jobs at Kiwi Senior Health that Aryan does himself"></ul>
           </div>
         </div>
@@ -200,9 +204,9 @@
 
       <section class="chapter contact" id="contact" data-state="photo" data-side="left" data-rail="Contact" data-note="Still a work in progress." aria-labelledby="contact-title">
         <div class="copy">
-          <p class="label">Ready for the next hard problem</p>
-          <h2 id="contact-title">Let’s make it matter.</h2>
-          <p class="body">Every project here taught me something the last one could not. The next one starts with a conversation.</p>
+          <p class="label">Contact</p>
+          <h2 id="contact-title">Let’s talk.</h2>
+          <p class="body">I’m based in Boston. Email reaches me directly.</p>
           <a class="email-link" href="mailto:mehtaaryan1999@gmail.com">mehtaaryan1999@gmail.com</a>
           <div class="contact-links">
             <a href="https://www.linkedin.com/in/aryanmehta2004/" target="_blank" rel="noopener noreferrer">LinkedIn <span aria-hidden="true">↗</span></a>
@@ -229,7 +233,7 @@
     </dialog>
     <template id="story-kiwi">
       <p class="label">Kiwi Senior Health / Founding product manager</p>
-      <h2 id="dialog-title">Trust takes<br>more than a model.</h2>
+      <h2 id="dialog-title">A fall detector<br>people can trust.</h2>
       <p class="dialog-lede">From the first product decisions to a working fall detector on the wrist.</p>
       <div class="dialog-evidence">
         <div>
@@ -250,7 +254,7 @@
         </div>
       </div>
       <h3>The difficult part</h3>
-      <p>Ordinary wrist movements can look like falls. A system that keeps crying wolf is hard to trust, especially when the person wearing it needs the alert to mean something.</p>
+      <p>Ordinary wrist movements can look like falls, and a detector that raises false alarms all day stops being trusted.</p>
       <p>I evaluated transfer learning first. The pretrained features did not transfer well to our hardware and axis layout, so I moved to a model trained from scratch.</p>
       <h3>What I built and owned</h3>
       <p>The final bidirectional LSTM combines six orientation-invariant motion signals with 33 engineered physics features. Evaluation held out an entire person at a time, so the model never trained and tested on the same participant.</p>
@@ -278,7 +282,7 @@
         </div>
       </div>
       <h3>The question</h3>
-      <p>People increasingly bring health questions to AI chatbots. Our research asked where these tools send network requests, and what that means for expectations of privacy.</p>
+      <p>People bring health questions to AI chatbots. Our research asked where these tools send network requests, and what that means for expectations of privacy.</p>
       <h3>My part</h3>
       <p>I led a team of more than ten researchers using Wireshark and Burp Suite to analyze commercial AI network traffic. I coordinated the research protocol, ethical approvals, and weekly risk readouts across engineering, legal, and policy stakeholders.</p>
       <h3>What we found</h3>
@@ -318,7 +322,7 @@
     </template>
     <template id="story-capstone">
       <p class="label">Penn State Learning Factory / Fall 2024</p>
-      <h2 id="dialog-title">Measure twice.<br>Build, test, repeat.</h2>
+      <h2 id="dialog-title">Two wires,<br>five sensors.</h2>
       <p class="dialog-lede">A Lockheed Martin-sponsored capstone to measure UAV mass properties on a student budget.</p>
       <div class="dialog-evidence">
         <div>
@@ -351,13 +355,13 @@
     <template id="story-path">
       <p class="label">Aryan Mehta / The roles he carried</p>
       <h2 id="dialog-title">The path<br>so far.</h2>
-      <p class="dialog-lede">Five years, four institutions, and a scope that kept growing.</p>
+      <p class="dialog-lede">2021 to now: Penn State, MIT, Harvard, Prognosis, Kiwi.</p>
       <ol class="path">
         <li><time>2021-2025</time><b>Penn State</b><span>Computer engineering</span></li>
         <li><time>2024-2025</time><b>MIT & Harvard</b><span>AI privacy & digital health research</span></li>
         <li><time>2024-2025</time><b>Prognosis</b><span>Founder & product manager</span></li>
         <li><time>Joined 2024</time><b>Kiwi Senior Health</b><span>Founding product manager</span></li>
-        <li><time>July 2026</time><b>A wider responsibility</b><span>Stepped into interim co-CEO scope</span></li>
+        <li><time>July 2026</time><b>Interim co-CEO</b><span>Responsibilities shared with the founder</span></li>
       </ol>
       <p>B.S. Computer Engineering, Penn State, with minors in cybersecurity and economics.</p>
     </template>

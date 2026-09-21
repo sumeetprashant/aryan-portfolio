@@ -22,11 +22,13 @@ const vec3 BLUE = vec3(.482, .576, .96);
 const vec3 DEEP = vec3(.16, .24, .72);
 const vec3 BONE = vec3(.93, .92, .89);
 const vec3 PEACH = vec3(.95, .68, .47);
+const vec3 HAIR_LO = vec3(.17, .105, .07);
+const vec3 HAIR_HI = vec3(.52, .34, .21);
 uniform vec2 uRes, uCenter, uPtr, uGrid;
 uniform vec4 uKeepA, uKeepB, uKeepC, uFeltBox;
 uniform float uTime, uScale, uSub, uLod, uCellLod, uCellPx, uGlyphN, uBust, uSmall, uKeepM;
 uniform float uMelt, uLiquid, uDisperse, uFree, uGather, uSnap, uGlyph, uRamp, uSolid, uStud, uBuild, uScatter, uRegather, uDust, uPhoto, uEnd, uLight;
-uniform sampler2D uReal, uLego, uAtlas;
+uniform sampler2D uReal, uAtlas;
 
 float h11(float n){ return fract(sin(n * 127.1) * 43758.5453); }
 float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -77,12 +79,31 @@ layout(location = 1) in vec4 aCell;
 layout(location = 2) in vec4 aSeed;
 out vec2 vQ; out vec2 vP;
 flat out vec2 vCell;
-flat out vec4 vReal, vLego, vPair, vW1, vW2, vW3, vW4, vBrick;
+flat out vec4 vReal, vLego, vPair, vW1, vW2, vW3, vW4, vW5, vBrick;
 
 float loc(float U, float th, float w){ float a = th * (1. - w); return smoothstep(a, a + w, U); }
 bool edge(float c2, float R){ return h21(vec2(c2, R) * 1.37 + 5.) < .36 || mod(c2 + floor(h11(R + .5) * 4.), 4.) < .5; }
 // 1 outside the box, 0 inside it, soft over uKeepM pixels
 float outside(vec4 box, vec2 p){ return smoothstep(0., uKeepM, length(max(max(box.xy - p, p - box.zw), 0.))); }
+// the colours the bricks come in: shirt whites, five skin tones, hair, the blues of his suit
+const vec3 BRICKS[14] = vec3[14](
+  vec3(.95, .95, .93), vec3(.80, .82, .84), vec3(.62, .64, .66),
+  vec3(.97, .80, .64), vec3(.88, .62, .44), vec3(.74, .48, .31), vec3(.56, .34, .21), vec3(.38, .21, .13),
+  vec3(.22, .13, .08), vec3(.09, .08, .08),
+  vec3(.30, .40, .66), vec3(.17, .25, .50), vec3(.09, .14, .32), vec3(.05, .08, .19));
+// one stud's width of him as a brick would show it: his own photo, each stud the nearest brick colour. a: whether he is there at all
+vec4 stud(float u, float R){
+  vec2 at = vec2(u * 2. + 1., R * 2. + 1.) / uGrid;
+  vec4 c = texP(uReal, at, uCellLod + 1.);
+  // his features are only a stud or two across, so they are sharpened against their surroundings first
+  float l = dot(c.rgb, LUMA), detail = l - dot(texP(uReal, at, uCellLod + 3.2).rgb, LUMA);
+  vec3 v = clamp((mix(vec3(l), c.rgb, 1.25) * 1.06) * clamp(1. + 1.5 * detail / (l + .3), .6, 1.5), 0., 1.), pick = BRICKS[0];
+  float best = 9.;
+  // nearest colour, with a penalty for losing its blueness, so a blue shadow stays a blue brick
+  for (int i = 0; i < 14; i++){ vec3 d = v - BRICKS[i]; float e = dot(d * d, vec3(1., 1.3, .8)) + .5 * abs((v.b - v.r) - (BRICKS[i].b - BRICKS[i].r)); if (e < best){ best = e; pick = BRICKS[i]; } }
+  return vec4(pick, step(.5, c.a));
+}
+bool differs(vec4 a, vec4 b){ vec4 d = abs(a - b); return d.x + d.y + d.z + d.w > .01; }
 
 void main(){
   vec2 cell = aCell.xy, sub = aCell.zw, cs = 1. / uGrid;
@@ -108,13 +129,19 @@ void main(){
   }
   vec4 pr = texP(uReal, pairUv, uCellLod + .5);
 
-  // which brick this cell belongs to: courses are two cells tall, bricks 2 to 8 cells long
+  // which brick this cell belongs to: courses are two cells tall, bricks 2 to 8 cells long, and a brick is one colour,
+  // so it also ends wherever his colour changes or he stops
   float c2 = floor(cell.x * .5), s0 = c2, s1 = c2 + 1.;
-  for (int k = 0; k < 4; k++){ if (edge(s0, pairRow)) break; s0 -= 1.; }
-  for (int k = 0; k < 4; k++){ if (edge(s1, pairRow)) break; s1 += 1.; }
+  vec4 mine = vec4(0.);
+  bool bricks = uStud > 0. && uPhoto < .5;   // only worked out while he is, or is becoming, bricks
+  if (bricks) mine = stud(c2, pairRow);
+  for (int k = 0; k < 4; k++){ if (edge(s0, pairRow) || (bricks && differs(stud(s0 - 1., pairRow), mine))) break; s0 -= 1.; }
+  for (int k = 0; k < 4; k++){ if (edge(s1, pairRow) || (bricks && differs(stud(s1, pairRow), mine))) break; s1 += 1.; }
   vec2 bC = vec2(s0 + s1, pairRow * 2. + 1.) * cs;
   float bh = h21(vec2(s0, pairRow) + 11.), bh2 = h21(vec2(s0, pairRow) + 3.);
-  vec4 lego = texP(uLego, bC, uCellLod + 1.);
+  // the shoulders and the sides of the frame thin out a whole brick at a time
+  float thin = (1. - smoothstep(uBust - .065, uBust, bC.y)) * smoothstep(0., .08, bC.x) * smoothstep(1., .92, bC.x);
+  vec4 lego = vec4(mine.rgb, mine.a * step(bh2 * .9 + .05, thin));
 
   // local progress of every change, staggered so each one ripples through the figure
   float rise = 1. - clamp(cuv.y / .69, 0., 1.);
@@ -201,6 +228,10 @@ void main(){
   // the dust never crosses the words: it thins to nothing over the summary's copy and its heading
   vec2 at = uCenter + (pos - .5) * frame;
   float clear = mix(1., outside(uKeepA, at) * outside(uKeepB, at) * outside(uKeepC, at), out5);
+  // and the pixels his hair lets go of keep out of the head line's box
+  clear *= mix(1., smoothstep(uKeepM * .1, uKeepM * .3, length(max(max(uKeepC.xy - at, at - uKeepC.zw), 0.))), step(.004, dsp));
+  // what counts as his hair at the end: dark, above the face, or already loose
+  float hair = max(step(.004, dsp), smoothstep(.13, .2, faceD) * step(cuv.y, .37) * (1. - smoothstep(.2, .34, dot(real.rgb, LUMA))));
 
   // characters: keep the hair and beard on the ramp, and sharpen the features against their surroundings
   float pl = dot(pr.rgb, LUMA);
@@ -213,16 +244,17 @@ void main(){
   vReal = real; vLego = lego;
   vPair = vec4(pr.rgb, gl);
   vW1 = vec4(wPoint, kg * free, fill, cube);
-  vW2 = vec4(st, smoothstep(.72, 1., land) * (1. - ph), step(h21(vec2(cell.x, pairRow) + 9.), uRamp), ph);
+  vW2 = vec4(st, 0., step(h21(vec2(cell.x, pairRow) + 9.), uRamp), ph);
   vW3 = vec4(hp, bump * st, mix(.3 + .7 * gat, 1., step(.001, uSolid)) * (1. - .5 * out5), heroWin);
   vW4 = vec4(smear, drop, clear, wet);
+  vW5 = vec4(hair, step(.004, dsp), 0., 0.);
   vBrick = vec4(s0 * 2., (s1 - s0) * 2., bh, hov);
 }`;
 
 const CELL_FS = COMMON + `
 in vec2 vQ; in vec2 vP;
 flat in vec2 vCell;
-flat in vec4 vReal, vLego, vPair, vW1, vW2, vW3, vW4, vBrick;
+flat in vec4 vReal, vLego, vPair, vW1, vW2, vW3, vW4, vW5, vBrick;
 out vec4 o;
 
 float sdBox(vec2 p, vec2 b, float r){ vec2 d = abs(p) - b + r; return length(max(d, 0.)) + min(max(d.x, d.y), 0.) - r; }
@@ -231,7 +263,7 @@ void main(){
   vec2 q = vQ;
   vec2 uv = (vCell + q) / uGrid;
   float wPoint = vW1.x, kg = vW1.y, fill = vW1.z, cube = vW1.w;
-  float st = vW2.x, win = vW2.y, ph = vW2.w, heroWin = vW3.w;
+  float st = vW2.x, ph = vW2.w, heroWin = vW3.w;
 
   // ---- the cell as a pixel: a flat warm tile, lit from the top left; where the melt has run long it smears toward peach
   vec3 pixc = mix(q9(warm(vReal.rgb)), PEACH, vW4.x);
@@ -241,6 +273,9 @@ void main(){
   // ---- at the end: the look site commit e2c80c4 opened with. Lit squares with a hair of room between them
   float tl = max(step(q.x, .15), step(q.y, .15)), br = max(step(.85, q.x), step(.85, q.y));
   vec3 endc = max(q9(vivid(vReal.rgb)), vec3(.12, .09, .085)) * (.94 + .12 * h21(vCell));   // the floor keeps his loose hair readable on the dark page
+  // his hair, and the pixels it lets go of, keep the hair's own warm browns: four of them, by how light the hair is there
+  float hl = floor(smoothstep(.03, .4, dot(vReal.rgb, LUMA)) * 3. + h21(vCell + 5.) * .9 + vW5.y) / 3.;   // the loose ones a step lighter, so they read against the page
+  endc = mix(endc, mix(HAIR_LO, HAIR_HI, hl) * (.9 + .2 * h21(vCell)), vW5.x);
   endc *= 1. + (.22 * tl * (1. - br) - .30 * br) * .8;
   vec2 dq = min(q, 1. - q) - .055;
   float sq = clamp(min(dq.x, dq.y) * uCellPx + .5, 0., 1.);
@@ -303,11 +338,11 @@ void main(){
     pl *= 1. - .3 * smoothstep(1.8 * e, .0, -dBody) * step(bs.y * .6, bp.y);
     if (dStud < dBody) pl = vLego.rgb * (1.16 - .3 * smoothstep(-.2, 1., (bp.y - sh * .2) / sh)) + .05;
     float sweep = (bp.x + bp.y * .7) / (bs.x + bs.y * .7) - .5 - (uPtr.x - .5) * .8 + (vBrick.z - .5) * .6 + sin(uTime * .25) * .2;
-    pl += .34 * exp(-sweep * sweep * 22.) * step(dBody, 0.);
+    pl += .2 * exp(-sweep * sweep * 22.) * step(dBody, 0.);
     float bcov = clamp(.5 - dd / max(e, .6), 0., 1.);
     col = mix(col, pl, st);
     cov = mix(cov, bcov, st);
-    alpha = mix(alpha, smoothstep(.3, .6, vLego.a), st);
+    alpha = mix(alpha, vLego.a, st);
   }
   col *= 1. + vW3.y * .5;
 
@@ -321,16 +356,9 @@ void main(){
     alpha = mix(alpha, smoothstep(.3, .6, vReal.a) * vW3.z, wPoint);
   }
 
-  // ---- as a window on a picture: the Lego build he was made into
   float a = alpha * cov;
   float edge = 1. - smoothstep(uBust - .075, uBust, uv.y);
   float edgeCell = step(vW3.x, 1. - smoothstep(uBust - .12, uBust, (floor(vCell.y * .5) * 2. + 1.) / uGrid.y));
-  win *= 1. - wPoint;
-  if (win > .001){
-    vec4 lg = texP(uLego, uv, uLod);
-    col = mix(col, lg.rgb, win);
-    a = mix(a, lg.a, win);
-  }
   // ---- the end: his real face shows through where the pixels have not taken over, and is pixels again under the pointer
   heroWin *= (1. - wPoint) * (1. - .92 * smoothstep(.075, .03, near + (vW3.x - .5) * .03));
   if (heroWin > .001){
@@ -338,8 +366,9 @@ void main(){
     col = mix(col, rl.rgb * (.96 + .04 * sq), heroWin);
     a = mix(a, rl.a, heroWin);
   }
-  a *= mix(mix(edgeCell, 1., vW4.w), edge, max(win, heroWin));
-  a *= smoothstep(0., .04, uv.x) * smoothstep(1., .96, uv.x) * vW4.z;
+  // bricks stop as whole bricks (see thin, above); every other state thins out cell by cell and fades at the frame's sides
+  float soft = mix(mix(edgeCell, 1., vW4.w), edge, heroWin) * smoothstep(0., .04, uv.x) * smoothstep(1., .96, uv.x);
+  a *= mix(soft, 1., st * (1. - wPoint)) * vW4.z;
   o = vec4(col * a, a * (1. - wPoint * .55 * (1. - uLight)));
 }`;
 
@@ -564,12 +593,12 @@ export async function createStage(canvas) {
   const gl = canvas.getContext('webgl2', { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: 'high-performance' });
   if (!gl) return null;
   const cellProg = program(gl, CELL_VS, CELL_FS), backProg = program(gl, QUAD_VS, BACK_FS), floatProg = program(gl, FLOAT_VS, FLOAT_FS);
-  const [real, lego, atlas] = await Promise.all([loadImage('assets/stage/real.jpg'), loadImage('assets/stage/lego.jpg'), glyphAtlas()]);
-  texture(gl, 0, real, true); texture(gl, 1, lego, true); texture(gl, 2, atlas, false);
+  const [real, atlas] = await Promise.all([loadImage('assets/stage/real.jpg'), glyphAtlas()]);
+  texture(gl, 0, real, true); texture(gl, 1, atlas, false);
 
   const small = matchMedia('(max-width: 820px)').matches;
   const cols = small ? 72 : 104, sub = small ? 2 : 3;
-  const grid = buildCells([real, lego], cols, sub);
+  const grid = buildCells([real], cols, sub);
   const cellVao = instanced(gl, [grid.cell, grid.seed]);
 
   const fa = new Float32Array(FLOATERS * 4), fb = new Float32Array(FLOATERS * 4);
@@ -614,7 +643,7 @@ export async function createStage(canvas) {
     gl.uniform1f(u.uLight, light);
     gl.uniform4f(u.uKeepA, ...boxes.keepA.map((v) => v * dpr)); gl.uniform4f(u.uKeepB, ...boxes.keepB.map((v) => v * dpr)); gl.uniform4f(u.uKeepC, ...boxes.keepC.map((v) => v * dpr));
     gl.uniform4f(u.uFeltBox, ...boxes.felt.map((v) => v * dpr)); gl.uniform1f(u.uKeepM, 90 * dpr);
-    gl.uniform1i(u.uReal, 0); gl.uniform1i(u.uLego, 1); gl.uniform1i(u.uAtlas, 2);
+    gl.uniform1i(u.uReal, 0); gl.uniform1i(u.uAtlas, 1);
   }
 
   function frame(now) {
