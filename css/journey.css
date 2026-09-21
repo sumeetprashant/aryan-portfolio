@@ -287,13 +287,14 @@ h3 { font-size: 1.45rem; line-height: 1.15; letter-spacing: -.03em; }
   position: sticky; top: var(--band, 50vh); width: min(1180px, calc(100vw - var(--pad) * 2)); margin: 0 auto; padding: 0 0 3vh;
   display: grid; grid-template-columns: var(--col-a, minmax(0, 1fr)) minmax(0, 1.4fr); row-gap: 1.4rem; column-gap: var(--col-gap, 3.5rem); align-items: start;
 }
-/* the Kiwi heading is the bench he sits on: one line across both columns, opened under his legs (--seat-a, --seat-gap from
-   journey.js); the columns below open where his feet swing (--col-a, --col-gap), so his feet never cover a word */
-.seat-line { grid-column: 1 / -1; display: grid; grid-template-columns: var(--seat-a, minmax(0, 1fr)) var(--seat-gap, 3.5rem) minmax(0, 1.4fr); align-items: start; margin: 0 0 var(--seat-drop, .2rem); }
+/* the Kiwi heading is the bench he sits on: one line across both columns, opened under his legs (--seat-a, --seat-extra from
+   journey.js, while he sits in it: --seat-open); the columns below open where his feet swing (--col-a, --col-gap), so his feet
+   never cover a word */
+.seat-line { grid-column: 1 / -1; display: grid; grid-template-columns: var(--seat-a, minmax(0, 1fr)) calc(.28em + var(--seat-open, 0) * var(--seat-extra, 0px)) minmax(0, 1.4fr); align-items: start; margin: 0 0 var(--seat-drop, .2rem); }
 .seat-a { text-align: right; }
 /* the jobs he signs for run two abreast here, so the copy stays short and he keeps more of the window */
 .summary-copy .signed { grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); }
-.summary-hold { height: 95vh; }
+.summary-hold { height: 70vh; }
 /* a window too short to hold both: the copy simply scrolls, and he has gone before it arrives */
 [data-summary="flow"] .summary-copy { position: relative; top: auto; padding-bottom: 30vh; }
 [data-summary="flow"] .summary-hold { display: none; }

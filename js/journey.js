@@ -19,7 +19,7 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const isSmall = () => innerWidth <= 820;
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const lerp = (a, b, t) => a + (b - a) * t;
-const summaryCopy = document.querySelector('.summary-copy'), summaryHead = document.querySelector('.summary-head'), summaryHold = document.querySelector('.summary-hold');
+const summaryCopy = document.querySelector('.summary-copy'), summaryHead = document.querySelector('.summary-head');
 const seatLine = document.querySelector('.seat-line');
 const HEADER = 92;   // the room the header takes
 const onScreen = (r) => r.bottom > 0 && r.top < innerHeight;
@@ -78,10 +78,12 @@ function measure() {
   // the heading opens where his legs hang, and the columns under it where his feet swing; the right side of both starts together
   const cs = getComputedStyle(summaryCopy), left = summaryCopy.getBoundingClientRect().left + (parseFloat(cs.paddingLeft) || 0);
   const at = (u) => innerWidth / 2 + (u - SCENE.cx) * sD;
-  const legL = at(SCENE.legs[0]) - 10, footL = at(SCENE.swing[0]) - 10, right = at(Math.max(SCENE.legs[1], SCENE.swing[1])) + 10;
+  // the heading only opens (--seat-open, from js/aryan.js) while he sits in it; closed, it is one line with a word space
+  const legL = at(SCENE.legs[0]) - 6, legR = at(SCENE.legs[1]) + 6, footL = at(SCENE.swing[0]) - 10, right = at(SCENE.swing[1]) + 10;
+  const space = parseFloat(getComputedStyle(seatLine).fontSize) * 0.28;
   const drop = isSmall() ? Math.max(0, summary.xh + (SCENE.seated[3] - SCENE.seat) * sD + 14 - seatLine.offsetHeight) : 3;
   const rise = isSmall() ? (SCENE.seat - SCENE.seated[1]) * sD - summary.xh + 16 : 0;   // on a phone the copy makes room above the heading for him
-  const vars = { '--seat-a': Math.max(0, legL - left), '--seat-gap': right - legL, '--col-a': Math.max(0, footL - left), '--col-gap': right - footL, '--seat-drop': drop, '--seat-rise': rise };
+  const vars = { '--seat-a': Math.max(0, legL - left), '--seat-extra': Math.max(0, legR - legL - space), '--col-a': Math.max(0, footL - left), '--col-gap': right - footL, '--seat-drop': drop, '--seat-rise': rise };
   let changed = false;
   for (const [k, v] of Object.entries(vars)) {
     if (Math.abs((parseFloat(summaryCopy.style.getPropertyValue(k)) || -1) - v) > 0.5) { summaryCopy.style.setProperty(k, `${v.toFixed(1)}px`); changed = true; }
@@ -166,15 +168,15 @@ function apply(view, real) {
   // in the summary he and the things draw up into the top of the window before the first words come up, and stay there while
   // the copy holds under him; he walks down onto its heading and sits. Through the last of that hold he melts and breaks into
   // points; only then does the copy go on up, through the room he has left, and the points gather into the last version of him
-  const words = copyBox.top / innerHeight, holdBox = summaryHold.getBoundingClientRect();
-  const held = summary.pin ? 1 - Math.min(1, Math.max(0, (holdBox.bottom - copyBox.bottom) / Math.max(1, holdBox.height))) : 0;
+  // once the hold is over he does not wait for the copy: it goes on up, he rides up with its heading and breaks into points
+  const words = copyBox.top / innerHeight, risen = (summary.band - copyBox.top) / innerHeight;
   summary.dock = summary.pin ? 1 - smooth(0.92, 1.28, words) : 0;
-  summary.leave = isSmall() ? s(6.25, 6.5) : summary.pin ? smooth(0.5, 0.97, held) : 1 - smooth(0.72, 1.02, words);
+  summary.leave = isSmall() ? s(6.25, 6.5) : summary.pin ? smooth(0.02, 0.42, risen) : 1 - smooth(0.72, 1.02, words);
   view.him = s(5.55, 5.85);
   view.drip = s(5.7, 5.9) * smooth(0.3, 0.85, summary.leave);
   const d = smooth(0, 1, summary.dock), a = summary.first, b = summary.docked, sc = summary.scene;
   if (isSmall()) { sc.s = b.s; sc.x = b.x; sc.y = seatLine.getBoundingClientRect().top + summary.xh - SCENE.seat * b.s; }
-  else { sc.s = lerp(a.s, b.s, d); sc.x = lerp(a.x, b.x, d); sc.y = lerp(a.y, b.y, d); }
+  else { sc.s = lerp(a.s, b.s, d); sc.x = lerp(a.x, b.x, d); sc.y = lerp(a.y, b.y, d) + (summary.pin ? Math.min(0, copyBox.top - summary.band) : 0); }
   summary.arrived = summary.pin && copyBox.top <= summary.band + 2;
   const [d0, d1, d2, d3] = SCENE.desk;
   summary.at.x = sc.x + (d0 + d2) / 2 * sc.s; summary.at.y = sc.y + (d1 + d3) / 2 * sc.s;
@@ -212,7 +214,7 @@ function apply(view, real) {
 
 const stage = await createStage(document.getElementById('stage-canvas')).catch((error) => { console.error(error); return null; });
 if (!stage) document.documentElement.classList.add('no-stage');
-let things = null, aryan = null;
+let things = null, aryan = null, seatOpen = '';
 if (stage) {
   measure();
   eased = target = position();
@@ -222,7 +224,10 @@ if (stage) {
     apply(stage.view, eased);
     window.__journey?.override?.(stage.view);   // lets shots/ hold a state still
     things?.update(eased, summary);
-    stage.glass(aryan?.update({ weight: stage.view.him, scene: summary.scene, arrived: summary.arrived, leave: summary.leave, focus: things?.focus() ?? null, small: isSmall() }) ?? null, summary.leave);
+    const him = aryan?.update({ weight: stage.view.him, scene: summary.scene, arrived: summary.arrived, leave: summary.leave, focus: things?.focus() ?? null, small: isSmall() }) ?? null;
+    stage.glass(him, summary.leave);
+    const open = (him?.open ?? 0).toFixed(3);
+    if (open !== seatOpen) { seatOpen = open; seatLine.style.setProperty('--seat-open', open); }
     placeNote(stage.view);
     requestAnimationFrame(tick);
   };
