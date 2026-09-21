@@ -1,5 +1,5 @@
 // The things he made. They live in a box at the side of the page, jump into their own chapter
-// as it arrives, and gather around the felt character in the summary, where each one opens its case study.
+// as it arrives, and gather around his monitor in the summary, where each one opens its case study.
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const lerp = (a, b, t) => a + (b - a) * t;
 const BLUE = '#7b93f5', DEEP = '#2c45c9', BONE = '#ece9e2', TAU = Math.PI * 2;
@@ -7,15 +7,15 @@ const BLUE = '#7b93f5', DEEP = '#2c45c9', BONE = '#ece9e2', TAU = Math.PI * 2;
 const INK = { rgb: '236,233,226', solid: BONE, page: '#0a0b0e', butter: '#f0d264', sage: '185,210,149', light: false };
 
 const DEFS = [
-  // table: where it stands around him in the summary. dx: from the middle of the window, in window heights times 1.2;
-  // y: fraction of the window's height; s: its size there at 1440 by 900 (it grows and shrinks with the window); z: how much it drifts
-  // dock: where it stands while he is beside the summary's copy. x: across his column on the right, y: down the window
-  { key: 'globe', name: 'The forecasts', story: 'forecast', chapter: 'forecast', w: 132, h: 132, table: { dx: -0.37, y: 0.7, z: 0.45, s: 2 }, dock: { x: 0.78, y: 0.28 } },
-  { key: 'packets', name: 'The privacy study', story: 'privacy', chapter: 'research', w: 240, h: 96, table: { dx: 0.38, y: 0.2, z: 0.6, s: 1.4 }, dock: { x: 0.3, y: 0.2 } },
-  { key: 'drone', name: 'The drone rig', story: 'capstone', chapter: 'engineering', w: 250, h: 250, table: { dx: 0.46, y: 0.47, z: 0.75, s: 1.2 }, dock: { x: 0.25, y: 0.45 } },
-  { key: 'watch', name: 'The Kiwi watch', story: 'kiwi', chapter: 'kiwi', w: 128, h: 160, table: { dx: 0.36, y: 0.79, z: 0.9, s: 1.5 }, dock: { x: 0.8, y: 0.51 } },
+  // table: where it stands around his monitor on the summary's first screen. dx, dy: from the monitor's middle, in monitor heights;
+  // s: its size there at 1440 by 900 (it grows and shrinks with the window); z: how much it drifts
+  // dock: where it stands, in the same measure, once he and the things have drawn up into the top of the window above the copy
+  { key: 'globe', name: 'The forecasts', story: 'forecast', chapter: 'forecast', w: 132, h: 132, table: { dx: -0.98, dy: 0.74, z: 0.45, s: 2 }, dock: { dx: -0.84, dy: 0.2 } },
+  { key: 'packets', name: 'The privacy study', story: 'privacy', chapter: 'research', w: 240, h: 96, table: { dx: 1.02, dy: -0.4, z: 0.6, s: 1.4 }, dock: { dx: -1.02, dy: -0.27 } },
+  { key: 'drone', name: 'The drone rig', story: 'capstone', chapter: 'engineering', w: 250, h: 250, table: { dx: 1.14, dy: 0.27, z: 0.75, s: 1.2 }, dock: { dx: 0.88, dy: -0.14 } },
+  { key: 'watch', name: 'The Kiwi watch', story: 'kiwi', chapter: 'kiwi', w: 128, h: 160, table: { dx: 0.5, dy: 0.96, z: 0.9, s: 1.5 }, dock: { dx: 1.24, dy: 0.2 } },
 ];
-const DOCK_SIZE = 0.5;   // their size beside the copy, against their size on the table
+const DOCK_SIZE = 0.5;   // their size above the copy, against their size on the table
 const REACH = 130;       // how near the pointer has to come, at 1440 by 900, for him and the thing to notice
 const RES = 2;   // the canvases are drawn at twice their box, so they stay sharp at table size
 
@@ -171,7 +171,7 @@ function makePackets() {
 export async function createThings({ stage, chapters, openStory, reduced }) {
   const shelf = document.getElementById('shelf'), scene = document.getElementById('table-scene');
   try { await document.fonts.load('700 9px "Space Mono"'); } catch { /* falls back to monospace */ }
-  const indexOf = (id) => chapters.findIndex((c) => c.id === id), felt = indexOf('about');
+  const indexOf = (id) => chapters.findIndex((c) => c.id === id), about = indexOf('about');
   const dpr = Math.min(devicePixelRatio || 1, 2);
   const hint = document.createElement('p');
   hint.className = 'scene-hint is-seen'; hint.setAttribute('aria-hidden', 'true');
@@ -234,10 +234,10 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
   function update(p, summary) {
     const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now; frame++;
     const boxed = innerWidth > 1100, roomy = innerWidth > 820;   // the shelf only exists on wide screens (see journey.css)
-    // they stand around him on the summary's first screen, step aside with him while its copy is read, and go back to the box as he leaves
+    // they stand around his monitor on the summary's first screen, draw up with it while the copy is read, and go back to the box as he leaves
     // on a phone they sit in a grid under the copy instead, and arrive as that grid scrolls in
     const grid = roomy ? null : scene.getBoundingClientRect();
-    const wTable = roomy ? smooth(felt - 0.34, felt - 0.12, p) * (1 - summary.leave)
+    const wTable = roomy ? smooth(about - 0.34, about - 0.12, p) * (1 - summary.leave)
       : smooth(innerHeight, innerHeight * 0.8, grid.top) * smooth(0, innerHeight * 0.15, grid.bottom);
     const k2 = Math.max(0.7, Math.min(2.2, Math.min(innerWidth / 1440, innerHeight / 900))), dock = summary.dock;
     attended = attend(k2);
@@ -250,12 +250,11 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
         if (!toTable) b = fit(t.slot.getBoundingClientRect(), t);
         else if (roomy) {
           const bob = live ? Math.sin(now / 1000 * 0.8 + t.i * 1.7) * 6 * t.table.z : 0;
-          // they are objects on the desk around him: sized with the window, placed from his frame, never off the edge.
-          // While he stands beside the copy they stand with him, in his column, smaller and stiller
-          const sz = t.table.s * k2 * lerp(1, DOCK_SIZE, dock), drift = 1 - 0.6 * dock;
-          const half = t.w * sz / 2 + 28, tx = innerWidth / 2 + t.table.dx * innerHeight * 1.2;
-          const dx = innerWidth - summary.desk + t.dock.x * (summary.desk - 64);
-          b = { x: lerp(Math.max(half, Math.min(innerWidth - half, tx)), dx, dock) - mx * 26 * t.table.z * drift, y: lerp(t.table.y, t.dock.y, dock) * innerHeight - my * 16 * t.table.z * drift + bob * drift, s: sz };
+          // they are objects on the desk around his monitor: sized with the window, placed from the monitor, never off the edge.
+          // While the copy is read they stand with it in the top of the window, smaller and stiller
+          const sz = t.table.s * k2 * lerp(1, DOCK_SIZE, dock), drift = 1 - 0.6 * dock, e = dock * dock * (3 - 2 * dock), m = summary.at;
+          const half = t.w * sz / 2 + 28, tx = m.x + lerp(t.table.dx, t.dock.dx, e) * m.h;
+          b = { x: Math.max(half, Math.min(innerWidth - half, tx)) - mx * 26 * t.table.z * drift, y: m.y + lerp(t.table.dy, t.dock.dy, e) * m.h - my * 16 * t.table.z * drift + bob * drift, s: sz };
         } else b = fit(t.seat.getBoundingClientRect(), t);
       }
       // as he leaves they fade where they stand and are back in the box afterwards: flying home would take them across the words
@@ -295,8 +294,8 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
 
   return {
     update,
-    // the point the felt character should look at: the thing that has his attention (see attend), or null for the pointer
-    focus() { return attended ? attended.at : null; },
+    // what he should look at: the thing that has his attention (see attend) and its name for his screen, or null for the pointer
+    focus() { return attended ? { x: attended.at.x, y: attended.at.y, name: attended.name } : null; },
     region(kind) { things[0].painter.region(kind); },
     setMotion(on) { live = on && !reduced; },
     setTheme(light) {

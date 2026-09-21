@@ -27,18 +27,16 @@
     <a class="skip-link" href="#main">Skip to content</a>
 
     <div class="stage" aria-hidden="true">
+      <div class="crt" id="crt">
+        <div class="crt-body">
+          <div class="crt-glass"><canvas></canvas><p class="crt-line"><span></span></p></div>
+          <i class="crt-power"></i>
+        </div>
+        <div class="crt-foot"></div>
+      </div>
       <canvas id="stage-canvas"></canvas>
       <img class="stage-fallback" src="assets/relit-headshot.jpg" alt="" width="1122" height="1402" loading="lazy">
       <p class="stage-note" id="stage-note"></p>
-    </div>
-    <div class="felt" id="felt" aria-hidden="true">
-      <img src="assets/felt-still.webp" alt="" width="1536" height="1024" loading="lazy">
-      <div class="felt-eyes">
-        <div class="felt-irises"><i><b></b></i><i><b></b></i></div>
-        <img class="felt-shade" src="assets/felt-eyes-shade.webp" alt="" width="1536" height="1024" loading="lazy">
-        <span class="felt-glint"></span><span class="felt-glint"></span>
-      </div>
-      <video muted playsinline preload="auto" tabindex="-1"></video>
     </div>
 
     <header class="site-header">
@@ -179,13 +177,14 @@
         </div>
       </section>
 
-      <section class="chapter summary" id="about" data-state="felt" data-side="centre" data-anchor="top" data-rail="The person" data-note="Mostly, other people." aria-labelledby="about-title">
+      <section class="chapter summary" id="about" data-state="crt" data-side="centre" data-anchor="top" data-rail="The person" data-note="Mostly, other people." aria-labelledby="about-title">
         <div class="summary-first">
           <div class="summary-head">
             <p class="label">The person behind the projects</p>
             <h2 id="about-title">I go where I’m needed.</h2>
           </div>
         </div>
+        <div class="summary-read">
         <div class="copy summary-copy">
           <div>
             <p class="body">At Kiwi, that meant writing the roadmap, hiring engineers, talking to suppliers, and testing and packing the watches we shipped myself.</p>
@@ -198,6 +197,8 @@
             <h3>At a small company, one name signs for most things.</h3>
             <ul class="signed" id="signed" aria-label="Jobs at Kiwi Senior Health that Aryan does himself"></ul>
           </div>
+        </div>
+        <div class="summary-hold" aria-hidden="true"></div>
         </div>
         <div class="table-scene" id="table-scene" role="group" aria-label="Everything on this page, gathered around him. Choose one to open it."></div>
       </section>
@@ -366,7 +367,7 @@
       <p>B.S. Computer Engineering, Penn State, with minors in cybersecurity and economics.</p>
     </template>
     <noscript>
-      <style>.text-link[data-story],.toggle,.motion-toggle,.rail,.shelf,.stage-note,.object-slot,.table-scene,.felt{display:none}.stage-fallback{display:block}</style>
+      <style>.text-link[data-story],.toggle,.motion-toggle,.rail,.shelf,.stage-note,.object-slot,.table-scene,.crt{display:none}.stage-fallback{display:block}</style>
     </noscript>
   </body>
 </html>

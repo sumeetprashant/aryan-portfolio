@@ -12,13 +12,14 @@ const note = document.getElementById('stage-note');
 const noteAt = new URLSearchParams(location.search).get('note') === 'bottom' ? 'bottom' : 'top';
 document.documentElement.dataset.note = noteAt;
 note.innerHTML = '<span class="typed"></span><span class="untyped"></span>';
-const HAIR_TOP = 0.125, FELT_TOP = 0.07;   // where his hair starts: in the portrait's frame, and in the felt character's
+const HAIR_TOP = 0.125;   // where his hair starts in the portrait's frame
 const rail = document.getElementById('rail');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const isSmall = () => innerWidth <= 820;
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const lerp = (a, b, t) => a + (b - a) * t;
-const summaryCopy = document.querySelector('.summary-copy'), summaryHead = document.querySelector('.summary-head'), feltEl = document.getElementById('felt');
+const summaryCopy = document.querySelector('.summary-copy'), summaryHead = document.querySelector('.summary-head'), summaryHold = document.querySelector('.summary-hold');
+const HEADER = 92, CRT_ASPECT = 1.12;   // the room the header takes, and the monitor's width against its height (journey.css)
 const onScreen = (r) => r.bottom > 0 && r.top < innerHeight;
 // value at p along a list of [p, value] stops, eased between them
 const along = (p, stops) => {
@@ -36,16 +37,27 @@ for (const c of chapters) {
   rail.append(a);
 }
 
-let marks = [], copyPad = 0, copyPadEnd = 0, noteH = 0;
-// the summary's copy shares the screen with the felt character: he and the things stand in a column this wide on the right
-const summary = { dock: 0, leave: 0, desk: 0, dockX: 0 };
+let marks = [], copyPadEnd = 0, noteH = 0;
+// the summary: the monitor and the things keep the top of the window (down to band) and the copy stops under them.
+// dock: 0 on the summary's first screen, 1 once they have drawn up to make room; leave: 0..1 as he melts and goes;
+// at: where the monitor stands this frame (its middle, its size against full, its height); pin: whether the copy holds
+const summary = { dock: 0, leave: 0, pin: false, band: 0, at: { x: 0, y: 0, s: 1, h: 0 }, first: { x: 0, y: 0, h: 0 }, docked: { y: 0, h: 0 } };
 function measure() {
-  summary.desk = Math.max(300, Math.min(720, innerWidth * 0.33));
-  summary.dockX = innerWidth - summary.desk / 2 - 20;
-  document.documentElement.style.setProperty('--desk', `${summary.desk}px`);
   noteH = note.offsetHeight;
-  copyPad = parseFloat(getComputedStyle(summaryCopy).paddingTop) || 0;   // the beat before the summary's first words
   copyPadEnd = parseFloat(getComputedStyle(summaryCopy).paddingBottom) || 0;
+  // the band is whatever the copy leaves free, up to a little over half the window; under a third and they cannot share it
+  const free = innerHeight - summaryCopy.offsetHeight - 8;
+  summary.pin = !isSmall() && free > innerHeight * 0.36;
+  summary.band = Math.min(free, innerHeight * 0.53);
+  document.documentElement.dataset.summary = summary.pin ? 'pin' : 'flow';
+  document.documentElement.style.setProperty('--band', `${summary.band.toFixed(1)}px`);
+  // the monitor: large in the upper middle of the first screen, clear of the heading; smaller, under the header, while the copy is read
+  const head = summaryHead.getBoundingClientRect();
+  const h = isSmall() ? Math.min(innerHeight * 0.4, (innerWidth - 44) / CRT_ASPECT) : Math.min(innerHeight * 0.47, innerWidth * 0.4 / CRT_ASPECT);
+  summary.first = { h, y: (isSmall() ? HEADER : innerHeight * 0.125) + h / 2, x: isSmall() ? innerWidth / 2 : Math.max(innerWidth / 2, head.right + 30 + h * CRT_ASPECT / 2) };
+  const hd = Math.min(h, summary.band - HEADER - 40);
+  summary.docked = { h: hd, y: HEADER + hd / 2 };
+  document.documentElement.style.setProperty('--crt-h', `${h.toFixed(1)}px`);
   const max = document.documentElement.scrollHeight - innerHeight;
   marks = chapters.map((c, i) => {
     const top = c.el.offsetTop, mid = top + c.el.offsetHeight / 2;
@@ -80,9 +92,7 @@ function say(text) {
 }
 // it stands a little above his hair, never under the header; or a little under his bust, never off the window
 function placeNote(view) {
-  const gap = innerHeight * 0.03, f = smooth(0.3, 0.7, view.felt), box = f > 0 ? feltEl.getBoundingClientRect() : null;
-  const top = lerp(stage.place(0.5, HAIR_TOP)[1], box ? box.top + box.height * FELT_TOP : 0, f);
-  const bottom = lerp(stage.place(0.5, view.bust)[1], box ? box.bottom : 0, f);
+  const gap = innerHeight * 0.03, top = stage.place(0.5, HAIR_TOP)[1], bottom = stage.place(0.5, view.bust)[1];
   // on a phone his hair starts under the header and the copy covers his chest, so the line takes the nearest clear place: tight under the header, or on his shoulders
   const y = noteAt === 'top' ? Math.max(isSmall() ? 80 : 92, top - gap - noteH) : isSmall() ? innerHeight * 0.385 : Math.min(innerHeight * 0.95 - noteH, bottom + gap * 0.5);
   if (Math.abs(y - noteY) > 0.5) { noteY = y; note.style.setProperty('--ny', `${y.toFixed(1)}px`); }
@@ -96,7 +106,7 @@ function anchor(c) {
 }
 
 // Chapter order is fixed by the page: 0 hero (pixels), 1 context (the wax melt), 2 forecasting and
-// 3 MIT (characters: numbers, then symbols), 4 cubes, 5 bricks, 6 the summary, 7 his face through the pixels.
+// 3 MIT (characters: numbers, then symbols), 4 cubes, 5 bricks, 6 the summary (he is in a monitor), 7 his face through the pixels.
 // Between versions the cells break into points and re-gather. Each change owns a real stretch of scroll.
 function apply(view, real) {
   // on a phone the copy slides up over him, so every change has to finish while he is still in the clear
@@ -114,6 +124,7 @@ function apply(view, real) {
   view.stud = s(4.2, 4.55);
   view.big = s(4.25, 4.6) * (1 - s(5.3, 5.45));
   view.build = s(4.5, 4.97);
+  view.fine = s(4.88, 4.995);   // once home, every brick clicks into bricks half the size, so his face has twice the studs across it
   view.scatter = s(5.28, 5.8);
   // he comes back only once the summary's copy has left the window, so nothing ever crosses the words
   const copyBox = summaryCopy.getBoundingClientRect(), headBox = summaryHead.getBoundingClientRect();
@@ -123,17 +134,25 @@ function apply(view, real) {
   view.end = s(6.72, 6.98) * home;
   view.disperse = Math.max(1 - s(1.1, 1.4), view.end);
   view.photo = p > 6 ? 1 : 0;
-  // the summary's character steps aside before the first words come up and stands beside them, smaller, with the things,
-  // for as long as they are read. As the copy leaves he breaks into points, and the points gather into the last version of him
-  const words = isSmall() ? 2 : (copyBox.top + copyPad) / innerHeight;
-  summary.dock = isSmall() ? 0 : 1 - smooth(1.04, 1.26, words);
-  summary.leave = isSmall() ? s(6.25, 6.5) : smooth(0.46, 0.26, copyEnd);
-  view.felt = s(5.55, 5.85) * (1 - summary.leave);
-  view.dust = s(5.7, 5.9) * summary.leave;
-  note.classList.toggle('is-under', summary.dock > 0.25 && Math.round(real) === chapters.length - 2);   // the head line waits while he stands beside the copy
-  const wordsBox = { left: copyBox.left, right: copyBox.right, top: copyBox.top + copyPad, bottom: copyBox.bottom - copyPadEnd };
-  stage.keepOut(onScreen(wordsBox) ? wordsBox : null, onScreen(headBox) ? headBox : null, note.getBoundingClientRect());
-  stage.feltBox(feltEl.getBoundingClientRect());
+  // the summary's monitor and the things draw up into the top of the window before the first words come up, and stay there
+  // while the copy holds under them. Through the last of that hold his picture melts down the glass and breaks into points;
+  // only then does the copy go on up, through the room he has left, and the points gather into the last version of him
+  const words = copyBox.top / innerHeight, holdBox = summaryHold.getBoundingClientRect();
+  const held = summary.pin ? 1 - Math.min(1, Math.max(0, (holdBox.bottom - copyBox.bottom) / Math.max(1, holdBox.height))) : 0;
+  summary.dock = summary.pin ? 1 - smooth(0.92, 1.28, words) : 0;
+  summary.leave = isSmall() ? s(6.25, 6.5) : summary.pin ? smooth(0.5, 0.97, held) : 1 - smooth(0.72, 1.02, words);
+  view.crt = s(5.55, 5.85);
+  view.drip = s(5.7, 5.9) * smooth(0.3, 0.85, summary.leave);
+  const d = smooth(0, 1, summary.dock);
+  summary.at.x = lerp(summary.first.x, innerWidth / 2, d); summary.at.y = lerp(summary.first.y, summary.docked.y, d);
+  summary.at.h = lerp(summary.first.h, summary.docked.h, d); summary.at.s = summary.at.h / summary.first.h;
+  const wordsBox = { left: copyBox.left, right: copyBox.right, top: copyBox.top, bottom: copyBox.bottom - copyPadEnd };
+  // in the summary the head line is the screen's own text, and the next one waits until the copy has cleared its place
+  const noteBox = note.getBoundingClientRect();
+  note.classList.toggle('is-under', chapters[Math.round(real)].state === 'crt' || (!isSmall() && noteBox.bottom > wordsBox.top - 24 && noteBox.top < wordsBox.bottom + 24));
+  // the summary's heading scrolls up through the place the things draw up into, so it goes as they come
+  summaryHead.style.opacity = (1 - smooth(0.1, 0.55, summary.dock)).toFixed(3);
+  stage.keepOut(onScreen(wordsBox) ? wordsBox : null, onScreen(headBox) && summary.dock < 0.55 ? headBox : null, noteBox);
   view.floaters = Math.max(1 - s(1.1, 1.4), s(3.7, 3.95)) * (1 - s(5.25, 5.45)) + view.end;
   view.glow = along(p, [[1.5, 1], [1.95, 2.2], [3.3, 2.2], [3.9, 1], [5.4, 1], [5.8, 0.4], [6.4, 0.4], [6.9, 1]]);
   view.bust = along(p, [[1.3, 0.8], [1.9, 0.68], [4.2, 0.68], [4.7, 0.655], [6.3, 0.655], [6.4, 0.765]]);
@@ -160,7 +179,7 @@ function apply(view, real) {
 
 const stage = await createStage(document.getElementById('stage-canvas')).catch((error) => { console.error(error); return null; });
 if (!stage) document.documentElement.classList.add('no-stage');
-let things = null, felt = null;
+let things = null, crt = null;
 if (stage) {
   measure();
   eased = target = position();
@@ -170,7 +189,7 @@ if (stage) {
     apply(stage.view, eased);
     window.__journey?.override?.(stage.view);   // lets shots/ hold a state still
     things?.update(eased, summary);
-    felt?.update(stage.view.felt, things?.focus(), summary.dock, summary.dockX);
+    stage.glass(crt?.update(stage.view.crt, things?.focus(), summary.at, summary.leave) ?? null, summary.leave);
     placeNote(stage.view);
     requestAnimationFrame(tick);
   };
@@ -307,11 +326,13 @@ toggle.addEventListener('click', () => {
   toggle.textContent = paused ? 'Resume motion' : 'Pause motion';
   stage?.setMotion(!paused);
   things?.setMotion(!paused);
+  crt?.setMotion(!paused);
 });
 
-// the felt character in the summary, and the things he made: shelf at the side, flying into their chapters, gathered around him there
+// the monitor he is in for the summary, and the things he made: shelf at the side, flying into their chapters, gathered around him there
 if (stage) {
-  import('./felt.js').then((m) => { felt = m.createFelt(document.getElementById('felt'), document.getElementById('about'), reduced.matches); }).catch((error) => console.error(error));
+  import('./crt.js').then((m) => m.createCrt(document.getElementById('crt'), document.getElementById('about').dataset.note, reduced.matches))
+    .then((c) => { crt = c; if (toggle.getAttribute('aria-pressed') === 'true') crt?.setMotion(false); }).catch((error) => console.error(error));
   import('./things.js').then((m) => m.createThings({ stage, chapters, openStory, reduced: reduced.matches }))
     .then((t) => { things = t; things.region(weeks.dataset.kind); things.setTheme(document.documentElement.dataset.theme === 'light'); })
     .catch((error) => console.error(error));

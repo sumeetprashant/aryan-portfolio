@@ -71,13 +71,15 @@ h1, h2, h3, .lede, .brand-name, .label, .nav-links, .theme-toggle, .rail a, .scr
 /* the stage: Aryan, fixed, behind the page */
 .stage { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
 .stage canvas { width: 100%; height: 100%; display: block; }
+/* the portrait's canvas lies over the summary's monitor, so the points the monitor melts into are in front of its glass */
+#stage-canvas { position: relative; z-index: 1; }
 .stage::after { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 40%, transparent 55%, var(--vignette)); }
 .stage-fallback { display: none; position: absolute; left: var(--px); top: 58vh; height: 78vh; width: auto; transform: translate(-50%, -50%); }
 .no-stage .stage-fallback { display: block; }
 /* the head line. journey.js stands it just above his hair (--ny); with ?note=bottom it sits under the bust on a plate of the
    page's own colour and is typed out. Both are there until Sumeet picks one */
 .stage-note {
-  position: absolute; left: var(--px); top: 0; margin: 0; width: max-content; max-width: 44vw; transform: translate(-50%, var(--ny, 10.5vh));
+  position: absolute; z-index: 2; left: var(--px); top: 0; margin: 0; width: max-content; max-width: 44vw; transform: translate(-50%, var(--ny, 10.5vh));
   font: 500 1.12rem/1.2 var(--display); color: var(--accent); text-align: center;
   opacity: 0; transition: opacity .35s ease;
 }
@@ -91,20 +93,35 @@ h1, h2, h3, .lede, .brand-name, .label, .nav-links, .theme-toggle, .rail a, .scr
 .stage-note[data-kind="pixels"], .stage-note[data-kind="melt"] { font: 400 1.75rem/1 var(--pixel); letter-spacing: .04em; }
 .stage-note[data-kind="ascii"] { font: 700 .95rem/1.2 var(--mono); }
 
-/* the summary's felt character: a still until the head-turn clip exists (js/felt.js) */
-/* he is one of the things on the desk: about 57% of the window's height shows (his frame is 62vh and he fills 93% of it) */
-.felt { position: fixed; left: 50%; bottom: -1vh; z-index: 0; height: 62vh; aspect-ratio: 3 / 2; pointer-events: none; opacity: 0; visibility: hidden; transform: translateX(-50%); transform-origin: 50% 100%; will-change: transform, opacity; }
-.felt img, .felt video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.felt video { display: none; -webkit-mask-image: radial-gradient(60% 75% at 50% 55%, #000 62%, transparent); mask-image: radial-gradient(60% 75% at 50% 55%, #000 62%, transparent); }
-.felt.has-clip video { display: block; }
-.felt.has-clip img, .felt.has-clip .felt-eyes { display: none; }
-/* his eyes (scripts/prep_stage.py blanks them, js/felt.js moves them): iris and pupil held inside the eye opening by a mask,
-   the lid's shadow over both, and a catch-light that stays where the light is */
-.felt-eyes, .felt-irises { position: absolute; inset: 0; }
-.felt-irises { -webkit-mask: url("../assets/felt-eyes-mask.webp") center / 100% 100% no-repeat; mask: url("../assets/felt-eyes-mask.webp") center / 100% 100% no-repeat; }
-.felt-irises i { position: absolute; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, var(--iris) 58%, var(--edge) 84%, var(--iris) 100%); will-change: transform; }
-.felt-irises b { position: absolute; inset: 22%; border-radius: 50%; background: radial-gradient(circle at 40% 36%, #23242e, var(--pupil) 46%); }
-.felt-glint { position: absolute; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, .92) 30%, rgba(255, 255, 255, 0) 72%); }
+/* the summary's monitor (js/crt.js): an object on the desk with him in it. It sits inside the stage, under the canvas, so the
+   points its picture melts into are drawn over its glass. Every measure is in em, and 1em is a hundredth of its height */
+.crt { position: absolute; left: 0; top: 0; height: var(--crt-h, 47vh); aspect-ratio: 1.12; font-size: calc(var(--crt-h, 47vh) / 100); opacity: 0; visibility: hidden; will-change: transform, opacity; --lit: 1; --said: 1; --gx: 0; --gy: 0; --s: 1; }
+.crt::after { content: ""; position: absolute; left: 8%; right: 8%; bottom: -3.5em; height: 8em; z-index: -2; background: radial-gradient(closest-side, rgba(0, 0, 0, .6), transparent); }
+[data-theme="light"] .crt::after { background: radial-gradient(closest-side, rgba(38, 50, 104, .34), transparent); }
+.crt-body {
+  position: absolute; inset: 0 0 11% 0; border-radius: 7em / 7.4em; background: linear-gradient(168deg, #30323b, #1b1c23 42%, #121318);
+  box-shadow: inset 0 .25em 0 rgba(255, 255, 255, .13), inset 0 0 0 .2em rgba(255, 255, 255, .045), inset 0 -2.4em 3.6em rgba(0, 0, 0, .5), 0 5em 9em -4em rgba(0, 0, 0, .75);
+}
+[data-theme="light"] .crt-body { box-shadow: inset 0 .25em 0 rgba(255, 255, 255, .16), inset 0 0 0 .2em rgba(255, 255, 255, .05), inset 0 -2.4em 3.6em rgba(0, 0, 0, .5), 0 5em 9em -4em rgba(38, 50, 104, .55); }
+/* the glass: set back in a dark lip, slightly convex (the picture bows in crt.js; here the edge falls into shadow),
+   with a faint reflection that moves against the way he looks (--gx, --gy) */
+.crt-glass { position: absolute; inset: 6.4% 6% 13.5% 6%; border-radius: 7.5em / 8.5em; overflow: hidden; background: #050608; box-shadow: 0 0 0 1.1em #08090c, 0 0 0 1.35em rgba(255, 255, 255, .07), 0 .5em 0 1.35em rgba(0, 0, 0, .35); }
+.crt-glass canvas { display: block; width: 100%; height: 100%; }
+.crt-glass::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background:
+    radial-gradient(95% 70% at calc(27% - var(--gx) * 10%) calc(6% - var(--gy) * 6%), rgba(255, 255, 255, .12), rgba(255, 255, 255, .03) 40%, transparent 62%),
+    linear-gradient(transparent 79%, rgba(5, 6, 10, calc(.74 * var(--lit))) 91%);
+  box-shadow: inset 0 0 5em rgba(0, 0, 0, .7), inset 0 0 1em rgba(0, 0, 0, .9);
+}
+/* the screen's own line: the chapter's head line, or the name of whatever has his attention */
+.crt-line { position: absolute; z-index: 1; left: 4%; right: 4%; bottom: 5.5%; margin: 0; text-align: center; white-space: nowrap; font: 700 calc(.84rem / var(--s)) / 1.2 var(--mono); text-transform: lowercase; color: #f2f0ea; text-shadow: 0 0 .6em rgba(255, 255, 255, .4); opacity: var(--said); }
+.crt-line::before { content: "> "; opacity: .6; }
+.crt-line span { transition: opacity .1s linear; }
+.crt-line span::after { content: "_"; animation: blink 1.1s steps(1) infinite; }
+.crt-line.is-changing span { opacity: 0; }
+.crt-power { position: absolute; right: 8.5%; bottom: 4.6%; width: 1.5em; height: 1.5em; border-radius: 50%; background: #b9d295; box-shadow: 0 0 1.1em rgba(185, 210, 149, .75), inset 0 -.2em .3em rgba(0, 0, 0, .35); opacity: calc(.22 + .78 * var(--lit)); }
+.crt-foot { position: absolute; left: 31%; right: 31%; bottom: 0; height: 12.5%; z-index: -1; background: linear-gradient(#0c0d11 30%, #22232b 82%, #15161b); clip-path: polygon(14% 0, 86% 0, 100% 100%, 0 100%); }
 @keyframes blink { 50% { opacity: 0; } }
 
 .site-header {
@@ -257,7 +274,7 @@ h3 { font-size: 1.45rem; line-height: 1.15; letter-spacing: -.03em; }
 [data-copy="right"] .rail a[aria-current]:not(:hover):not(:focus-visible) span { opacity: 0; }
 .rail a[aria-current]::after { width: 30px; height: 2px; background: var(--ink); }
 
-/* the things he made. They live in a box at the side, fly into their chapter, and gather round him in felt */
+/* the things he made. They live in a box at the side, fly into their chapter, and gather round him in the summary */
 .shelf { position: fixed; left: 14px; top: 50%; z-index: 4; width: 58px; transform: translateY(-50%); display: grid; gap: 6px; padding: 8px 6px; border: 1px solid var(--line); transition: opacity .4s; }
 .shelf::before { content: "made"; display: block; text-align: center; font-size: .78rem; line-height: 1; color: var(--muted); padding-bottom: 2px; }
 .shelf i { display: block; width: 44px; height: 44px; border: 1px dashed transparent; transition: border-color .3s; }
@@ -288,14 +305,21 @@ h3 { font-size: 1.45rem; line-height: 1.15; letter-spacing: -.03em; }
 .summary-head { position: absolute; left: clamp(22px, 6vw, 96px); top: 24vh; width: min(23rem, 25vw); }
 .js .summary-head > * { opacity: 0; transform: translateY(18px); transition: opacity .8s ease, transform .8s cubic-bezier(.2, .7, .2, 1); }
 .js .summary-head > .is-seen { opacity: 1; transform: none; }
-/* the copy shares the screen with him: he and the things stand in a column on the right (--desk, set by journey.js) and the words
-   keep to the rest. The top padding is the beat in which he steps aside; the words only enter once he is there */
+/* the copy comes up underneath him and stops below him and the things (--band, measured in journey.js): it holds there while
+   it is read, he melts, and only then does it go on up through the room he has left. Nothing ever crosses the words.
+   The top padding is the beat in which the monitor and the things draw up into the top of the window */
+.summary-read { padding-top: 30vh; }
 .summary-copy {
-  --pad: clamp(22px, 6vw, 96px); --copy: min(1040px, calc(100vw - var(--desk, 33vw) - var(--pad) * 2));
-  width: var(--copy); margin: 0 0 0 calc((100vw - var(--desk, 33vw) - var(--copy)) / 2); padding: 30vh 0 30vh;
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 2rem 3.5rem; align-items: start;
+  --pad: clamp(22px, 6vw, 96px);
+  position: sticky; top: var(--band, 50vh); width: min(1180px, calc(100vw - var(--pad) * 2)); margin: 0 auto; padding: 0 0 3vh;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 1.4rem 3.5rem; align-items: start;
 }
-/* nothing is behind this copy: he and the things never leave their column while it is on screen (journey.js, things.js) */
+/* the jobs he signs for run two abreast here, so the copy stays short and he keeps more of the window */
+.summary-copy .signed { grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); }
+.summary-hold { height: 95vh; }
+/* a window too short to hold both: the copy simply scrolls, and he has gone before it arrives */
+[data-summary="flow"] .summary-copy { position: relative; top: auto; padding-bottom: 30vh; }
+[data-summary="flow"] .summary-hold { display: none; }
 .summary-copy::before { content: none; }
 .summary-copy .asset { margin-top: 0; padding-top: 0; border-top: 0; }
 
@@ -352,9 +376,10 @@ h3 { font-size: 1.45rem; line-height: 1.15; letter-spacing: -.03em; }
   .table-scene { position: relative; z-index: 1; background: var(--bg); margin: 0 -22px; padding-inline: 22px !important; display: grid; grid-template-columns: repeat(2, 1fr); gap: 26px 14px; align-items: center; justify-items: center; padding: 2.4rem 0 1rem; }
   .table-seat { display: block; width: min(100%, 150px); }
   .table-scene::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 90px; background: linear-gradient(var(--bg), transparent); pointer-events: none; }
-  .felt { bottom: auto; top: 9vh; height: 52vh; -webkit-mask-image: linear-gradient(#000 68%, transparent 98%); mask-image: linear-gradient(#000 68%, transparent 98%); }
   .summary-head { top: auto; bottom: 5vh; left: 22px; right: 22px; width: auto; }
-  .summary-copy { width: auto; grid-template-columns: 1fr; gap: 1.6rem; padding: 40px 22px 2rem; margin: 0; background: linear-gradient(transparent, var(--bg) 40px); }
+  .summary-read { padding-top: 0; }
+  .summary-hold { display: none; }
+  .summary-copy, [data-summary="flow"] .summary-copy { position: relative; top: auto; width: auto; grid-template-columns: 1fr; gap: 1.6rem; padding: 40px 22px 2rem; margin: 0; background: linear-gradient(transparent, var(--bg) 40px); }
   .summary-copy::before { content: none; }
 }
 
@@ -363,5 +388,6 @@ h3 { font-size: 1.45rem; line-height: 1.15; letter-spacing: -.03em; }
   .js .copy > *, .js .summary-head > *, .js .blocks i.is-lit, .falls i { transition: none; opacity: 1; transform: none; }
   .js .signed path { transition: none; stroke-dashoffset: 0; }
   .thing canvas { transition: none; }
-  .stage-note .typed::after { animation: none; }
+  .stage-note .typed::after, .crt-line span::after { animation: none; }
+  .crt-line span { transition: none; }
 }

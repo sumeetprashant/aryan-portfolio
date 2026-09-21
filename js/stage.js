@@ -2,6 +2,7 @@
 // on the registered portrait (scripts/prep_stage.py) and scroll decides what it is right
 // now: a pixel, a free point, part of a character, a lit cube, part of a brick, a photo
 // texel. Nothing swaps; between versions the cells break into points and re-gather.
+import { FACE, CROP } from './crt.js';
 
 const ASPECT = 2 / 3;
 const VMAX = 0.78125;
@@ -25,9 +26,9 @@ const vec3 PEACH = vec3(.95, .68, .47);
 const vec3 HAIR_LO = vec3(.17, .105, .07);
 const vec3 HAIR_HI = vec3(.52, .34, .21);
 uniform vec2 uRes, uCenter, uPtr, uGrid;
-uniform vec4 uKeepA, uKeepB, uKeepC, uFeltBox;
+uniform vec4 uKeepA, uKeepB, uKeepC, uKeepD, uGlass;
 uniform float uTime, uScale, uSub, uLod, uCellLod, uCellPx, uGlyphN, uBust, uSmall, uKeepM;
-uniform float uMelt, uLiquid, uDisperse, uFree, uGather, uSnap, uGlyph, uRamp, uSolid, uStud, uBuild, uScatter, uRegather, uDust, uPhoto, uEnd, uLight;
+uniform float uMelt, uLiquid, uDisperse, uFree, uGather, uSnap, uGlyph, uRamp, uSolid, uStud, uBuild, uScatter, uRegather, uDrip, uPhoto, uEnd, uLight, uFine;
 uniform sampler2D uReal, uAtlas;
 
 float h11(float n){ return fract(sin(n * 127.1) * 43758.5453); }
@@ -92,17 +93,20 @@ const vec3 BRICKS[14] = vec3[14](
   vec3(.22, .13, .08), vec3(.09, .08, .08),
   vec3(.30, .40, .66), vec3(.17, .25, .50), vec3(.09, .14, .32), vec3(.05, .08, .19));
 // one stud's width of him as a brick would show it: his own photo, each stud the nearest brick colour. a: whether he is there at all
-vec4 stud(float u, float R){
-  vec2 at = vec2(u * 2. + 1., R * 2. + 1.) / uGrid;
-  vec4 c = texP(uReal, at, uCellLod + 1.);
+vec4 studAt(vec2 at, float lod){
+  vec4 c = texP(uReal, at, lod);
   // his features are only a stud or two across, so they are sharpened against their surroundings first
-  float l = dot(c.rgb, LUMA), detail = l - dot(texP(uReal, at, uCellLod + 3.2).rgb, LUMA);
+  float l = dot(c.rgb, LUMA), detail = l - dot(texP(uReal, at, lod + 2.2).rgb, LUMA);
   vec3 v = clamp((mix(vec3(l), c.rgb, 1.25) * 1.06) * clamp(1. + 1.5 * detail / (l + .3), .6, 1.5), 0., 1.), pick = BRICKS[0];
   float best = 9.;
   // nearest colour, with a penalty for losing its blueness, so a blue shadow stays a blue brick
   for (int i = 0; i < 14; i++){ vec3 d = v - BRICKS[i]; float e = dot(d * d, vec3(1., 1.3, .8)) + .5 * abs((v.b - v.r) - (BRICKS[i].b - BRICKS[i].r)); if (e < best){ best = e; pick = BRICKS[i]; } }
   return vec4(pick, step(.5, c.a));
 }
+vec4 stud(float u, float R){ return studAt(vec2(u * 2. + 1., R * 2. + 1.) / uGrid, uCellLod + 1.); }
+// once he has landed every brick clicks into bricks half the size: a stud is one cell, a course one cell tall
+vec4 studFine(float c, float R){ return studAt(vec2(c + .5, R + .5) / uGrid, uCellLod); }
+bool edgeFine(float c, float R){ return h21(vec2(c, R) * 1.91 + 2.) < .3 || mod(c + floor(h11(R + .25) * 3.) + mod(R, 2.), 3.) < .5; }
 bool differs(vec4 a, vec4 b){ vec4 d = abs(a - b); return d.x + d.y + d.z + d.w > .01; }
 
 void main(){
@@ -154,6 +158,18 @@ void main(){
   float fill = smoothstep(0., .6, x3), cube = smoothstep(.45, 1., x3) * (1. - ph);
   float st = loc(uStud, bh * .6 + rise * .4, .35) * (1. - ph);   // under the photograph he is plain pixels again
   float land = loc(uBuild, clamp(1. - bC.y / .75, 0., 1.) * .86 + bh * .14, .1);
+  // the finer landing: it only ever happens to a brick that is home, so the fall and the pile are untouched
+  float fine = step(bh * .7 + centre * .3 + .02, uFine) * step(.999, land) * (bricks ? 1. : 0.);
+  float f0 = cell.x, f1 = cell.x + 1.;
+  if (fine > .5){
+    vec4 fm = studFine(cell.x, cell.y);
+    for (int k = 0; k < 3; k++){ if (edgeFine(f0, cell.y) || differs(studFine(f0 - 1., cell.y), fm)) break; f0 -= 1.; }
+    for (int k = 0; k < 3; k++){ if (edgeFine(f1, cell.y) || differs(studFine(f1, cell.y), fm)) break; f1 += 1.; }
+    vec2 fC = vec2(f0 + f1, cell.y * 2. + 1.) * .5 * cs;
+    float fthin = (1. - smoothstep(uBust - .065, uBust, fC.y)) * smoothstep(0., .08, fC.x) * smoothstep(1., .92, fC.x);
+    lego = vec4(fm.rgb, fm.a * step(h21(vec2(f0, cell.y) + 3.) * .9 + .05, fthin));
+    bh = h21(vec2(f0, cell.y) + 11.);
+  }
   float x5 = loc(uScatter, hs * .5 + cuv.y * .6, .45);
   float x6 = loc(uRegather, hs * .45 + centre * .55, .45);
 
@@ -203,11 +219,14 @@ void main(){
   float rr = .05 + .55 * pow(aSeed.y, .75);
   vec2 frame = vec2(uScale * ASPECT, uScale);
   vec2 halo = vec2(.5, .36) + vec2(cos(th) * rr * uRes.x, sin(th) * rr * .9 * uRes.y) / frame;
-  // when the summary's character steps back he breaks into points too: they start on him and drift out into the room
+  // the summary's monitor melts into points too (js/crt.js): each starts where it sits in his picture on the glass, or on the
+  // glass's bottom edge if the picture does not reach it, runs down a little as a drip, and drifts out into the room
   float base = step(.93, aSeed.w), extra = step(.7, aSeed.w) * (1. - base);
-  float burst = loc(uDust, aSeed.z, .5);
-  vec2 onHim = (vec2(uFeltBox.x + (home.x - .5) * .62 * uFeltBox.z, uFeltBox.y + (.2 + (home.y - .12) / .66 * .8) * uFeltBox.w) - uCenter) / frame + .5;
-  halo = mix(halo, mix(onHim, halo, burst * burst * (3. - 2. * burst)), extra);
+  float burst = loc(uDrip, aSeed.z * .6 + clamp(1. - home.y / .6, 0., 1.) * .4, .5);
+  vec2 gf = clamp((home - vec2(${FACE[0]}, ${CROP.v})) / vec2(${CROP.dv} * 1.5 * uGlass.z / uGlass.w, ${CROP.dv}) + .5, vec2(.05, .04), vec2(.95, .97));
+  gf.y = mix(gf.y, .72 + .25 * aSeed.y, step(.97, gf.y));   // what lies below the picture comes off the last of the drips, not off one line
+  vec2 onGlass = (vec2(uGlass.x + (gf.x - .5) * uGlass.z, uGlass.y + (gf.y + .12 * smoothstep(0., .35, burst) * (1. - gf.y)) * uGlass.w) - uCenter) / frame + .5;
+  halo = mix(halo, mix(onGlass, halo, smoothstep(.25, 1., burst)), extra);
   pos = mix(pos, halo, out5);
   pos.y -= sin(3.14159 * out5) * .06 * aSeed.z;
   float p5 = smoothstep(0., .3, x5) * (1. - smoothstep(.6, 1., x6));
@@ -228,6 +247,8 @@ void main(){
   // the dust never crosses the words: it thins to nothing over the summary's copy and its heading
   vec2 at = uCenter + (pos - .5) * frame;
   float clear = mix(1., outside(uKeepA, at) * outside(uKeepB, at) * outside(uKeepC, at), out5);
+  // nor his monitor: only the points it melts into are ever in front of it
+  clear *= mix(1., outside(uKeepD, at), out5 * (1. - extra * step(burst, .999)));
   // and the pixels his hair lets go of keep out of the head line's box
   clear *= mix(1., smoothstep(uKeepM * .1, uKeepM * .3, length(max(max(uKeepC.xy - at, at - uKeepC.zw), 0.))), step(.004, dsp));
   // what counts as his hair at the end: dark, above the face, or already loose
@@ -244,11 +265,11 @@ void main(){
   vReal = real; vLego = lego;
   vPair = vec4(pr.rgb, gl);
   vW1 = vec4(wPoint, kg * free, fill, cube);
-  vW2 = vec4(st, 0., step(h21(vec2(cell.x, pairRow) + 9.), uRamp), ph);
+  vW2 = vec4(st, fine, step(h21(vec2(cell.x, pairRow) + 9.), uRamp), ph);
   vW3 = vec4(hp, bump * st, mix(.3 + .7 * gat, 1., step(.001, uSolid)) * (1. - .5 * out5), heroWin);
   vW4 = vec4(smear, drop, clear, wet);
   vW5 = vec4(hair, step(.004, dsp), 0., 0.);
-  vBrick = vec4(s0 * 2., (s1 - s0) * 2., bh, hov);
+  vBrick = fine > .5 ? vec4(f0, f1 - f0, bh, hov) : vec4(s0 * 2., (s1 - s0) * 2., bh, hov);
 }`;
 
 const CELL_FS = COMMON + `
@@ -324,10 +345,10 @@ void main(){
 
   // ---- as part of a brick, seen from the side with its studs on top
   if (st > .001){
-    float len = vBrick.y;
-    vec2 bs = vec2(len, 2.) * uCellPx;
-    vec2 bp = vec2(vCell.x + q.x - vBrick.x, mod(vCell.y, 2.) + q.y) * uCellPx;
-    float sh = bs.y * .17, unit = 2. * uCellPx, e = uCellPx * .1;   // e: every edge detail scales with the brick
+    float len = vBrick.y, tall = vW2.y > .5 ? 1. : 2.;   // a course is two cells tall, or one once it has clicked into finer bricks
+    vec2 bs = vec2(len, tall) * uCellPx;
+    vec2 bp = vec2(vCell.x + q.x - vBrick.x, mod(vCell.y, tall) + q.y) * uCellPx;
+    float sh = bs.y * .17, unit = tall * uCellPx, e = uCellPx * .05 * tall;   // e: every edge detail scales with the brick
     float dBody = sdBox(bp - vec2(bs.x * .5, (bs.y + sh) * .5), vec2(bs.x * .5 - .35 * e, (bs.y - sh) * .5 - .35 * e), 1.2 * e);
     float dStud = sdBox(vec2(mod(bp.x, unit) - unit * .5, bp.y - sh * .6), vec2(unit * .28, sh * .55), .9 * e);
     float dd = min(dBody, dStud);
@@ -612,11 +633,11 @@ export async function createStage(canvas) {
 
   const view = {
     cx: 0.7, cy: 0.61, scale: 1.3, bust: 0.8, glow: 1,
-    melt: 0.3, liquid: 1, disperse: 1, free: 0, gather: 0, snap: 0, glyph: 0, ramp: 0, solid: 0, stud: 0, build: 0, scatter: 0, regather: 0, dust: 0, photo: 0, end: 0,
+    melt: 0.3, liquid: 1, disperse: 1, free: 0, gather: 0, snap: 0, glyph: 0, ramp: 0, solid: 0, stud: 0, build: 0, scatter: 0, regather: 0, drip: 0, photo: 0, end: 0, fine: 0,
     floaters: 1, big: 0,
   };
   const FAR = [-1e5, -1e5, -1e5, -1e5];
-  const boxes = { keepA: FAR, keepB: FAR, keepC: FAR, felt: [0, 0, 1, 1] };   // CSS pixels; see keepOut() and feltBox()
+  const boxes = { keepA: FAR, keepB: FAR, keepC: FAR, keepD: FAR, glass: [0, 0, 1, 1] };   // CSS pixels; see keepOut() and glass()
   const ptr = { x: 0.1, y: -0.35, tx: 0.1, ty: -0.35 }; // parked off the figure until the pointer moves
   let dpr = 1, frozenTime = null, running = true, light = 0;
   const t0 = performance.now();
@@ -637,12 +658,12 @@ export async function createStage(canvas) {
     gl.uniform1f(u.uCellLod, Math.max(0, Math.log2(1280 / cols) - 0.4));
     gl.uniform1f(u.uCellPx, scale * ASPECT / cols);
     gl.uniform1f(u.uGlyphN, GLYPHS.length); gl.uniform1f(u.uBust, view.bust); gl.uniform1f(u.uSmall, small ? 1 : 0);
-    for (const k of ['melt', 'liquid', 'disperse', 'free', 'gather', 'snap', 'glyph', 'ramp', 'solid', 'stud', 'build', 'scatter', 'regather', 'dust', 'photo', 'end']) {
+    for (const k of ['melt', 'liquid', 'disperse', 'free', 'gather', 'snap', 'glyph', 'ramp', 'solid', 'stud', 'build', 'scatter', 'regather', 'drip', 'photo', 'end', 'fine']) {
       gl.uniform1f(u['u' + k[0].toUpperCase() + k.slice(1)], view[k]);
     }
     gl.uniform1f(u.uLight, light);
     gl.uniform4f(u.uKeepA, ...boxes.keepA.map((v) => v * dpr)); gl.uniform4f(u.uKeepB, ...boxes.keepB.map((v) => v * dpr)); gl.uniform4f(u.uKeepC, ...boxes.keepC.map((v) => v * dpr));
-    gl.uniform4f(u.uFeltBox, ...boxes.felt.map((v) => v * dpr)); gl.uniform1f(u.uKeepM, 90 * dpr);
+    gl.uniform4f(u.uKeepD, ...boxes.keepD.map((v) => v * dpr)); gl.uniform4f(u.uGlass, ...boxes.glass.map((v) => v * dpr)); gl.uniform1f(u.uKeepM, 90 * dpr);
     gl.uniform1i(u.uReal, 0); gl.uniform1i(u.uAtlas, 1);
   }
 
@@ -691,8 +712,14 @@ export async function createStage(canvas) {
     place(u, v) { const s = view.scale * innerHeight; return [view.cx * innerWidth + (u - 0.5) * s * ASPECT, view.cy * innerHeight + (v - 0.5) * s]; },
     // the rectangles of words the summary's dust stays out of, as DOMRects (or null)
     keepOut(a, b, c) { boxes.keepA = box(a); boxes.keepB = box(b); boxes.keepC = box(c); },
-    // where the summary's character stands: centre x, top, width, height
-    feltBox(r) { boxes.felt = [r.left + r.width / 2, r.top, r.width, r.height]; },
+    // the glass of the summary's monitor as a DOMRect (null while it is away), and how far he has gone (0..1). The room's dust
+    // keeps off the whole monitor, which is about a sixth wider than its glass, until it has melted away
+    glass(r, leave) {
+      if (!r) { boxes.keepD = FAR; return; }
+      boxes.glass = [r.left + r.width / 2, r.top, r.width, r.height];
+      const k = 1 - Math.min(1, Math.max(0, (leave - 0.7) / 0.3)), cx = r.left + r.width / 2, cy = r.top + r.height * 0.55;
+      boxes.keepD = k > 0 ? [cx - r.width * 0.58 * k, cy - r.height * 0.66 * k, cx + r.width * 0.58 * k, cy + r.height * 0.72 * k] : FAR;
+    },
     setRunning(on) { if (on && !running) { running = true; requestAnimationFrame(frame); } else if (!on) running = false; },
     setMotion(on) { frozenTime = on ? null : 12.5; },
     setLight(on) { light = on ? 1 : 0; },
