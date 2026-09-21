@@ -169,16 +169,19 @@ function video(src, loop) {
   v.muted = true; v.defaultMuted = true; v.playsInline = true; v.loop = !!loop; v.preload = 'none';
   v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
   v.src = src;
-  // seeks are queued, never stacked: while one is under way the latest wish waits for it (temp03's scrub)
+  // seeks are queued, never stacked: while one is under way the latest wish waits for it (temp03's scrub), and it waits until the
+  // frame that seek landed on has been drawn (upload): sent on at once, a steady scrub (his walk back up) never showed a frame at all
   v.want = null;
-  v.addEventListener('seeked', () => { if (v.want !== null) { const t = v.want; v.want = null; if (Math.abs(v.currentTime - t) > 0.02) v.currentTime = t; } });
   return v;
 }
 function seek(v, t) {
-  if (v.seeking) { v.want = t; return; }
-  if (Math.abs(v.currentTime - t) > 0.02) v.currentTime = t;
+  if (v.seeking || v.undrawn) { v.want = t; return; }
+  if (Math.abs(v.currentTime - t) > 0.02) { v.currentTime = t; v.undrawn = true; }
 }
 const play = (v) => { if (v.paused) v.play().catch(() => {}); };
+// a clip sent to another moment while it is off the page: until that frame is really there (fresh) it would show the last picture
+// it held (his head still turned, him still seated), so it does not come in, and the clip before it stays whole, until then
+const jump = (l, t) => { l.v.currentTime = t; l.v.want = null; l.fresh = false; };
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 export async function createAryan(canvas, reduced) {
@@ -212,7 +215,7 @@ export async function createAryan(canvas, reduced) {
     holdWas = p.hold;
     if (p.small || phone) phase = 'seat';
     else if (phase === 'float' && p.arrived && (holdDir > 0 || !live)) {
-      if (live) { phase = 'walk'; walkDir = 1; rate = 1; walk.v.currentTime = T0; } else { phase = 'seat'; swap = 1; }
+      if (live) { phase = 'walk'; walkDir = 1; rate = 1; jump(walk, T0); } else { phase = 'seat'; swap = 1; }
     } else if (phase === 'walk') {
       walkDir = p.arrived && holdDir > 0 ? 1 : -1;
       if (walkDir > 0) {
@@ -224,20 +227,20 @@ export async function createAryan(canvas, reduced) {
         rate += ((behind > 0.3 ? Math.min(3, 1 + behind * 1.2) : 1) - rate) * (1 - Math.exp(-dt * 3));
         walk.v.playbackRate = Math.round(rate * 20) / 20;
         if (p.leave > 0.01 || p.hold >= 0.98) walk.v.currentTime = walkEnd();
-        if (walk.v.ended || walk.v.currentTime >= walkEnd()) { phase = 'seat'; sit.v.currentTime = 0; }
+        if (walk.v.ended || walk.v.currentTime >= walkEnd()) { phase = 'seat'; jump(sit, 0); }
       } else if (walk.v.currentTime <= T0 + 0.04) {
         swap = Math.max(0, swap - dt / SWAP);
-        if (swap <= 0) { phase = 'float'; mode = 'work'; work.v.currentTime = 0; }
+        if (swap <= 0) { phase = 'float'; mode = 'work'; jump(work, 0); }
       }
     } else if (phase === 'seat' && (!p.arrived || (live && holdDir < 0 && p.hold < 0.78))) {
       if (!live) { phase = 'float'; mode = 'work'; swap = 0; }
-      else { phase = 'walk'; walkDir = -1; walk.v.currentTime = walkEnd(); }
+      else { phase = 'walk'; walkDir = -1; jump(walk, walkEnd()); }
     }
 
     // floating, he turns his head toward the thing that has attention: its place across the window scrubs his head turn
     if (phase === 'float') {
       const want = live && hover && p.focus && p.here;
-      if (want && mode === 'work') { mode = 'look'; lookT = 0; look.v.currentTime = 0; }
+      if (want && mode === 'work') { mode = 'look'; lookT = 0; jump(look, 0); }
       let target = 0;
       if (want) {
         const head = p.scene.x + SCENE.cx * p.scene.s;
@@ -245,9 +248,11 @@ export async function createAryan(canvas, reduced) {
         target = LOOK[1] + (f < 0 ? (LOOK[1] - LOOK[0]) * f : (LOOK[2] - LOOK[1]) * f);
       }
       lookT += (target - lookT) * (1 - Math.exp(-dt * 5));
-      if (mode === 'look') {
+      if (mode === 'look' && !look.fresh) lookT = 0;   // his head does not start round until the clip is there, looking down as he was
+      else if (mode === 'look') {
         seek(look.v, lookT);
-        if (!want && lookT < 0.04) { mode = 'work'; work.v.currentTime = 0; }
+        // and he is back at his work only once the clip really shows him facing it again (its seeks run a little behind)
+        if (!want && lookT < 0.04 && !look.v.seeking && look.v.currentTime < 0.08) { mode = 'work'; jump(work, 0); }
       }
     }
 
@@ -260,8 +265,12 @@ export async function createAryan(canvas, reduced) {
     }
     // a clip that comes in is there at once and the one it replaces fades off it: two half-faded copies of him would let the room
     // show through for a moment, which read as him starting to break up
-    const k = live ? 1 - Math.exp(-dt / FADE) : 1;
-    for (const l of all) l.a = l.want ? (l.has || l.v.readyState >= 2 ? 1 : l.a) : l.a + (0 - l.a) * k;
+    // (and the one it replaces goes at once, once the new one's frame is there: fading, it left a pale mark of his head where the
+    // two pictures differ, plain to see on the light page)
+    const k = live ? 1 - Math.exp(-dt / FADE) : 1, inc = all.find((l) => l.want);
+    if (inc && !inc.fresh) upload(inc);
+    const ready = !!inc && inc.fresh;
+    for (const l of all) l.a = l === inc ? (ready ? 1 : l.a) : ready ? 0 : inc ? l.a : l.a + (0 - l.a) * k;
 
     // the heading opens for his legs as he comes to sit, and closes again as he leaves
     const seated = phase === 'seat' ? 1 : phase === 'walk' ? smooth(5.2, 6.6, walk.v.currentTime) : 0;
@@ -290,7 +299,9 @@ export async function createAryan(canvas, reduced) {
     gl.bindTexture(gl.TEXTURE_2D, l.tex);
     if (l.v.readyState < 2 || l.v.seeking) return !!l.has;
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, l.v);
-    return (l.has = true);
+    l.v.undrawn = false;
+    if (l.v.want !== null) { const t = l.v.want; l.v.want = null; seek(l.v, t); }
+    return (l.has = l.fresh = true);
   }
 
   function draw(l, p, dpr, W, H, bob) {
