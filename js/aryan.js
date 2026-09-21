@@ -245,13 +245,16 @@ export async function createAryan(canvas, reduced) {
     }
 
     for (const l of all) l.want = 0;
-    if (phase === 'seat') sit.want = 1;
+    // the seated clip takes over only once it has a frame to show; until then the last frame of the walk stays, so he never drops out
+    if (phase === 'seat') { if (!sit.has && walk && walk.has) { upload(sit); walk.want = 1; } else sit.want = 1; }
     else {
       if (phase === 'walk') walk.want = 1;
-      if (swap < 1) layers[mode].want = 1;
+      else layers[mode].want = 1;
     }
+    // a clip that comes in is there at once and the one it replaces fades off it: two half-faded copies of him would let the room
+    // show through for a moment, which read as him starting to break up
     const k = live ? 1 - Math.exp(-dt / FADE) : 1;
-    for (const l of all) l.a += (l.want - l.a) * k;
+    for (const l of all) l.a = l.want ? (l.has || l.v.readyState >= 2 ? 1 : l.a) : l.a + (0 - l.a) * k;
 
     // the heading opens for his legs as he comes to sit, and closes again as he leaves
     const seated = phase === 'seat' ? 1 : phase === 'walk' ? smooth(5.2, 6.6, walk.v.currentTime) : 0;
@@ -326,8 +329,7 @@ export async function createAryan(canvas, reduced) {
       step(dt, { ...p, here: gone < 0.02 });
       gl.viewport(0, 0, W, H);
       gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
-      const over = live ? smooth(0, 1, swap) : swap;
-      for (const l of all) l.prog = Math.max(gone, l.floats ? over : l === walk ? 1 - over : 0);
+      for (const l of all) l.prog = gone;   // points only ever mean arriving or leaving; between clips he simply cross-fades on the same picture
       // floating, he bobs a little (the page's doing, not the clip's); not once he stands, and not with motion off
       const bob = live ? Math.sin(now / 4000 * 6.2832) * 5 : 0;
       for (const l of all) draw(l, p, dpr, W, H, bob);
