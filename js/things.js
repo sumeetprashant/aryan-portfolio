@@ -7,12 +7,14 @@ const BLUE = '#7b93f5', DEEP = '#2c45c9', BONE = '#ece9e2', TAU = Math.PI * 2;
 const INK = { rgb: '236,233,226', solid: BONE, page: '#0a0b0e', butter: '#f0d264', sage: '185,210,149', light: false };
 
 const DEFS = [
-  // table: where it rests around him in the summary, as a fraction of the window
-  { key: 'globe', name: 'The forecasts', story: 'forecast', chapter: 'forecast', w: 132, h: 132, table: { x: 0.2, y: 0.76, z: 0.45, s: 0.95 } },
-  { key: 'packets', name: 'The privacy study', story: 'privacy', chapter: 'research', w: 240, h: 96, table: { x: 0.79, y: 0.27, z: 0.6, s: 0.7 } },
-  { key: 'drone', name: 'The drone rig', story: 'capstone', chapter: 'engineering', w: 250, h: 250, table: { x: 0.86, y: 0.55, z: 0.75, s: 0.6 } },
-  { key: 'watch', name: 'The Kiwi watch', story: 'kiwi', chapter: 'kiwi', w: 128, h: 160, table: { x: 0.74, y: 0.8, z: 0.9, s: 0.95 } },
+  // table: where it stands around him in the summary. dx: from the middle of the window, in widths of his frame (80vh by 3:2);
+  // y: fraction of the window's height; s: its size there at 1440 by 900 (it grows and shrinks with the window); z: how much it drifts
+  { key: 'globe', name: 'The forecasts', story: 'forecast', chapter: 'forecast', w: 132, h: 132, table: { dx: -0.415, y: 0.7, z: 0.45, s: 2 } },
+  { key: 'packets', name: 'The privacy study', story: 'privacy', chapter: 'research', w: 240, h: 96, table: { dx: 0.41, y: 0.2, z: 0.6, s: 1.4 } },
+  { key: 'drone', name: 'The drone rig', story: 'capstone', chapter: 'engineering', w: 250, h: 250, table: { dx: 0.5, y: 0.47, z: 0.75, s: 1.2 } },
+  { key: 'watch', name: 'The Kiwi watch', story: 'kiwi', chapter: 'kiwi', w: 128, h: 160, table: { dx: 0.4, y: 0.79, z: 0.9, s: 1.5 } },
 ];
+const RES = 2;   // the canvases are drawn at twice their box, so they stay sharp at table size
 
 /* ---------------- the drone on its two wires, seen from above, built from voxels ---------------- */
 function makeDrone(thing) {
@@ -173,11 +175,12 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
   hint.textContent = matchMedia('(hover: hover)').matches ? 'Everything so far, in one place. Pick one up.' : 'Everything so far. Tap one to open it.';
   document.querySelector('.summary-head').append(hint);
 
-  let live = !reduced, hovered = null, mx = 0, my = 0, watch = null;
+  let live = !reduced, hovered = null, focused = null, mx = 0, my = 0, watch = null;
+  const canHover = matchMedia('(hover: hover)').matches;
   const things = DEFS.map((def, i) => {
     const el = document.createElement('button');
     el.type = 'button'; el.className = 'thing'; el.dataset.key = def.key; el.style.setProperty('--w', `${def.w}px`); el.style.setProperty('--h', `${def.h}px`);
-    const canvas = document.createElement('canvas'); canvas.width = def.w * dpr; canvas.height = def.h * dpr;
+    const canvas = document.createElement('canvas'); canvas.width = def.w * dpr * RES; canvas.height = def.h * dpr * RES;
     const name = document.createElement('span'); name.className = 'thing-name'; name.textContent = def.name;
     el.append(canvas, name); scene.append(el);
     const home = document.createElement('i'); shelf.append(home);
@@ -187,6 +190,8 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
     thing.painter = def.key === 'drone' ? makeDrone(thing) : def.key === 'globe' ? makeGlobe() : def.key === 'packets' ? makePackets() : null;
     el.addEventListener('pointerenter', () => { hovered = thing; });
     el.addEventListener('pointerleave', () => { if (hovered === thing) hovered = null; });
+    el.addEventListener('focus', () => { focused = thing; });
+    el.addEventListener('blur', () => { if (focused === thing) focused = null; });
     el.addEventListener('click', () => {
       if (thing.mode === 'table') openStory(def.story);
       else if (thing.mode === 'shelf') document.getElementById(def.chapter ?? 'about').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
@@ -202,17 +207,19 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
     if (watch) { const r = watchThing.canvas.getBoundingClientRect(); watch.pointer(Math.max(-1, Math.min(1, (e.clientX - r.left - r.width / 2) / 260)), Math.max(-1, Math.min(1, (e.clientY - r.top - r.height / 2) / 260))); }
   }, { passive: true });
 
-  let last = performance.now(), frame = 0;
+  let last = performance.now(), frame = 0, copyPad = 0;
+  const measure = () => { copyPad = parseFloat(getComputedStyle(copy).paddingTop) || 0; };
+  measure(); addEventListener('resize', measure);
   const fit = (r, t) => { const s = Math.min(r.width / t.w, r.height / t.h); return { x: r.left + r.width / 2, y: r.top + r.height / 2, s }; };
 
   function update(p) {
     const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now; frame++;
     const boxed = innerWidth > 1100, roomy = innerWidth > 820;   // the shelf only exists on wide screens (see journey.css)
     // they stand around him on the summary's first screen and go back to the box as its copy comes up
-    const copyTop = copy.getBoundingClientRect().top / innerHeight;
+    const words = (copy.getBoundingClientRect().top + copyPad) / innerHeight;   // where the summary's first words are
     // on a phone they sit in a grid under the copy instead, and arrive as that grid scrolls in
     const grid = roomy ? null : scene.getBoundingClientRect();
-    const wTable = roomy ? smooth(felt - 0.34, felt - 0.12, p) * smooth(0.84, 0.98, copyTop)
+    const wTable = roomy ? smooth(felt - 0.34, felt - 0.12, p) * smooth(1.0, 1.12, words)
       : smooth(innerHeight, innerHeight * 0.8, grid.top) * smooth(0, innerHeight * 0.15, grid.bottom);
     for (const t of things) {
       const wSlot = t.ci < 0 ? 0 : 1 - smooth(0.4, 0.6, Math.abs(p - t.ci));
@@ -223,7 +230,10 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
         if (!toTable) b = fit(t.slot.getBoundingClientRect(), t);
         else if (roomy) {
           const bob = live ? Math.sin(now / 1000 * 0.8 + t.i * 1.7) * 6 * t.table.z : 0;
-          b = { x: t.table.x * innerWidth - mx * 26 * t.table.z, y: t.table.y * innerHeight - my * 16 * t.table.z + bob, s: t.table.s * Math.min(1.15, innerHeight / 900) };
+          // they are objects on the desk around him: sized with the window, placed from his frame, never off the edge
+          const k2 = Math.max(0.7, Math.min(2.2, Math.min(innerWidth / 1440, innerHeight / 900))), sz = t.table.s * k2;
+          const half = t.w * sz / 2 + 28, tx = innerWidth / 2 + t.table.dx * innerHeight * 1.2;
+          b = { x: Math.max(half, Math.min(innerWidth - half, tx)) - mx * 26 * t.table.z, y: t.table.y * innerHeight - my * 16 * t.table.z + bob, s: sz };
         } else b = fit(t.seat.getBoundingClientRect(), t);
       }
       t.mode = k > 0.96 ? (toTable ? 'table' : 'slot') : k < 0.04 ? 'shelf' : 'flight';
@@ -234,6 +244,8 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
       if (!boxed) { x = b.x; y = b.y; s = b.s * (0.72 + 0.28 * e) * (1 + t.lift * 0.12); opacity = e; }
       const tilt = t.mode === 'table' && roomy ? `perspective(900px) rotateX(${(-my * 9 * t.table.z).toFixed(2)}deg) rotateY(${(mx * 13 * t.table.z).toFixed(2)}deg) ` : '';
       t.el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) ${tilt}rotate(${(hop * (t.i % 2 ? -14 : 14)).toFixed(1)}deg) scale(${s.toFixed(4)}) translate(-50%,-50%)`;
+      t.el.style.setProperty('--s', s.toFixed(3));   // the name under it stays one size whatever the thing's scale
+      t.at = { x, y };
       t.el.style.opacity = opacity.toFixed(3);
       t.el.style.visibility = opacity < 0.01 ? 'hidden' : 'visible';
       t.el.style.pointerEvents = t.mode === 'flight' ? 'none' : 'auto';
@@ -248,13 +260,26 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
       if (!active || opacity < 0.01) continue;
       t.seen = frame;
       if (t.key === 'watch') { watch?.render(now); continue; }
-      const c = t.ctx; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, t.w, t.h);
+      const c = t.ctx; c.setTransform(dpr * RES, 0, 0, dpr * RES, 0, 0); c.clearRect(0, 0, t.w, t.h);
       t.painter.draw(c, t.w, t.h, now, dt, live && t.mode !== 'shelf');
     }
   }
 
   return {
     update,
+    // the point the felt character should look at: the thing under the pointer or the keyboard, or on a phone the one nearest the middle of the screen
+    focus() {
+      const pick = hovered ?? focused;
+      if (pick?.mode === 'table') return pick.at;
+      if (canHover) return null;
+      let best = null, bd = 1e9;
+      for (const t of things) {
+        if (t.mode !== 'table' || !t.at) continue;
+        const d = Math.hypot(t.at.x - innerWidth / 2, t.at.y - innerHeight / 2);
+        if (d < bd) { bd = d; best = t; }
+      }
+      return best && best.at;
+    },
     region(kind) { things[0].painter.region(kind); },
     setMotion(on) { live = on && !reduced; },
     setTheme(light) {

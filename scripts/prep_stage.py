@@ -26,9 +26,12 @@ PROFILE = 'Aryan-Mehta-Website-and-Data/profile-and-resume/'
 SOURCES = {
     # the relit headshot is the base photo for every procedural state and the final frame
     'real': (PROFILE + 'relit-headshot.jpg', (495, 426), (664, 445)),
+    # the Lego build for the Kiwi chapter: the same source site commit e2c80c4 used (0more-imgs holds no newer one)
+    'lego': (PROFILE + '0more-imgs/ChatGPT Image Sep 20, 2026, 07_06_28 PM.png', (498, 473), (678, 499)),
 }
 # the summary's still: the cartoon felt character, cut out of his mock-up page. Pupil centres as eye points.
 FELT = (PROFILE + '0more-imgs/ChatGPT Image Sep 20, 2026, 07_07_15 PM.png', (700, 400), (868, 420))
+FELT_PUPILS = ((732, 400), (893, 425))   # where the two pupils sit in that picture (he is looking hard to his left)
 
 
 def similarity(src_l, src_r, scale=1.0):
@@ -77,6 +80,88 @@ def matte_grabcut(img, valid):
     return cv2.resize(fg, (W, H), interpolation=cv2.INTER_LINEAR)
 
 
+def refine_lego(canon, hard):
+    """The Lego render sits on a dark neutral backdrop that GrabCut cannot tell from navy
+    brick. Below the chin, keep only what is blue (Lab b), bright (shirt), or the neck column."""
+    lab = cv2.cvtColor(canon, cv2.COLOR_BGR2LAB).astype(np.int16)
+    L, b = lab[..., 0], lab[..., 2]
+    ys, xs = np.mgrid[0:H, 0:W]
+    keep = (b < 119) | (L > 150) | (np.abs(xs - W * 0.5) < W * 0.12)
+    out = np.where((ys < H * 0.478) | keep, hard, 0).astype(np.uint8)
+    out = cv2.morphologyEx(out, cv2.MORPH_OPEN, np.ones((7, 7), np.uint8))
+    out = cv2.morphologyEx(out, cv2.MORPH_CLOSE, np.ones((15, 15), np.uint8))
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(out)
+    if n > 1:
+        out = np.where(labels == 1 + np.argmax(stats[1:, cv2.CC_STAT_AREA]), 255, 0).astype(np.uint8)
+    return out
+
+
+def felt_eyes(src):
+    """Takes the two pupils out of the felt character so js/felt.js can move them after the pointer.
+    Returns the source with both eye whites left blank. Writes site/assets/felt-pupil.webp (one whole
+    pupil: the left one, its clipped side rebuilt from its clear side), site/assets/felt-eyes-mask.webp
+    (the two eye whites, in the still's 1536x1024 frame) and site/assets/felt-eyes.js (where they sit)."""
+    h, w = src.shape[:2]
+    lab = cv2.cvtColor(src, cv2.COLOR_BGR2LAB).astype(np.int16)
+    L, A, B = lab[..., 0], lab[..., 1], lab[..., 2]
+    out = src.copy()
+    whites = np.zeros((h, w), np.uint8)
+    eyes, sprite = [], None
+    for (px, py) in FELT_PUPILS:
+        px, py = int(px), int(py)
+        roi = np.zeros((h, w), np.uint8)
+        roi[py - 70:py + 70, px - 130:px + 40] = 1
+        white = ((L > 150) & (np.abs(A - 128) < 12) & (np.abs(B - 128) < 24) & (roi > 0)).astype(np.uint8)
+        dark = cv2.morphologyEx(((L < 50) & (roi > 0)).astype(np.uint8), cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+        # the pupil is the dark blob under the measured point; the eye white is the pale blob beside it
+        n, labels, stats, cents = cv2.connectedComponentsWithStats(dark)
+        near = [i for i in range(1, n) if math.hypot(cents[i][0] - px, cents[i][1] - py) < 14]
+        pupil = (labels == max(near, key=lambda i: stats[i, cv2.CC_STAT_AREA])).astype(np.uint8)
+        pupil = cv2.morphologyEx(pupil, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8))
+        n, labels, stats, _ = cv2.connectedComponentsWithStats(white)
+        white = (labels == 1 + np.argmax(stats[1:, cv2.CC_STAT_AREA])).astype(np.uint8)
+        hull = cv2.convexHull(np.argwhere((white | pupil) > 0)[:, ::-1].astype(np.int32))
+        eye = np.zeros((h, w), np.uint8)
+        cv2.fillConvexPoly(eye, hull, 1)
+        eye = cv2.erode(eye, np.ones((3, 3), np.uint8))
+        # blank the pupil: each channel of the eye white as a plane, darker toward the socket like the rest of it
+        ys, xs = np.where((white > 0) & (cv2.dilate(pupil, np.ones((23, 23), np.uint8)) == 0))
+        dist = cv2.distanceTransform(eye, cv2.DIST_L2, 5)
+        G = np.stack([xs, ys, np.exp(-dist[ys, xs] / 5.0), np.ones_like(xs)], 1).astype(np.float32)
+        hole = (cv2.dilate(pupil, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (19, 19))) > 0) & ((eye > 0) | (cv2.dilate(pupil, np.ones((7, 7), np.uint8)) > 0))
+        hy, hx = np.where(hole)
+        Gh = np.stack([hx, hy, np.exp(-dist[hy, hx] / 5.0), np.ones_like(hx)], 1).astype(np.float32)
+        grain = cv2.GaussianBlur(np.random.default_rng(7).normal(0, 1, (h, w)).astype(np.float32), (0, 0), 1.2) * 5
+        fill = out.astype(np.float32)
+        for c in range(3):
+            coef, *_ = np.linalg.lstsq(G, src[ys, xs, c].astype(np.float32), rcond=None)
+            fill[hy, hx, c] = Gh @ coef + grain[hy, hx]
+        k = cv2.GaussianBlur(hole.astype(np.float32), (0, 0), 1.6)[..., None]
+        out = np.clip(out * (1 - k) + fill * k, 0, 255).astype(np.uint8)
+        whites |= eye
+
+        (cx, cy), pr = cv2.minEnclosingCircle(np.argwhere(pupil > 0)[:, ::-1].astype(np.float32))
+        ex, ey, ew, eh = cv2.boundingRect(hull)
+        eyes.append({'cx': ex + ew / 2, 'cy': ey + eh / 2, 'rx': ew / 2, 'ry': eh / 2, 'px': cx, 'py': cy, 'pr': pr})
+        if sprite is None:
+            # the left pupil shows all of its left side: mirror that side to make it whole again
+            R = int(pr) + 5
+            ys2, xs2 = np.where(pupil > 0)
+            left = xs2.min()
+            pr0 = (np.ptp(ys2) + 1) / 2.0
+            ccx, ccy = int(round(left + pr0)), int(round((ys2.min() + ys2.max()) / 2))
+            crop = src[ccy - R:ccy + R, ccx - R:ccx + R].copy()
+            crop[:, R:] = crop[:, :R][:, ::-1]
+            yy, xx = np.mgrid[-R:R, -R:R]
+            a = np.clip((pr0 - .8 - np.hypot(xx + .5, yy + .5)) / 1.6, 0, 1)
+            sprite = np.dstack([cv2.cvtColor(crop, cv2.COLOR_BGR2RGB), (a * 255).astype(np.uint8)])
+            eyes[0].update({'px': float(ccx), 'py': float(ccy), 'pr': float(pr0)})
+            sprite_r = pr0 / R
+    eyes[1]['pr'] = eyes[0]['pr']
+    Image.fromarray(sprite).save('site/assets/felt-pupil.webp', quality=95, method=6)
+    return out, whites, eyes, sprite_r
+
+
 def felt_still():
     """site/assets/felt-still.webp: the felt character matted off the cream mock-up he was drawn on
     (handwriting, tape and arrows all sit outside his silhouette), centred in a 1536x1024 frame with
@@ -114,7 +199,8 @@ def felt_still():
 
     # felt is fuzzy: inside a band round the cut, alpha is how far each pixel sits from the paper
     # behind it, and the paper's share is taken back out of the colour so no cream fringe is left
-    f = src.astype(np.float32)
+    blank, whites, eyes, sprite_r = felt_eyes(src)
+    f = blank.astype(np.float32)
     paper_mask = (cv2.dilate(hard, np.ones((41, 41), np.uint8)) == 0).astype(np.float32)
     paper = cv2.GaussianBlur(f * paper_mask[..., None], (0, 0), 45) / np.maximum(cv2.GaussianBlur(paper_mask, (0, 0), 45), 1e-3)[..., None]
     dist = np.linalg.norm(cv2.cvtColor(src, cv2.COLOR_BGR2LAB).astype(np.float32) - cv2.cvtColor(np.clip(paper, 0, 255).astype(np.uint8), cv2.COLOR_BGR2LAB).astype(np.float32), axis=2)
@@ -132,7 +218,7 @@ def felt_still():
     clean = np.where(alpha[..., None] > .02, np.clip(clean, 0, 255), 0).astype(np.uint8)
     # loose fibres take the colour of the felt just inside them, so the fuzz never reads as a pale rim
     band = cv2.dilate(hard, np.ones((21, 21), np.uint8)) & cv2.bitwise_not(cv2.erode(hard, np.ones((11, 11), np.uint8)))
-    inner = cv2.inpaint(src, band, 7, cv2.INPAINT_TELEA)
+    inner = cv2.inpaint(blank, band, 7, cv2.INPAINT_TELEA)
     k = np.clip((alpha - .45) / .5, 0, 1)[..., None]
     clean = (inner * (1 - k) + clean * k).astype(np.uint8)
     # a hair of the cut pulled in, so what is left of the paper never shows on the dark page
@@ -145,6 +231,19 @@ def felt_still():
     a = cv2.warpAffine((alpha * 255).astype(np.uint8), M, (FW, FH), flags=cv2.INTER_LINEAR, borderValue=0)
     out = np.dstack([cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB), a])
     Image.fromarray(out).save('site/assets/felt-still.webp', quality=90, method=6)
+    # the eye whites as a mask in the same frame, and where the eyes sit as fractions of it
+    wm = cv2.warpAffine(whites * 255, M, (FW, FH), flags=cv2.INTER_LINEAR, borderValue=0)
+    wm = cv2.GaussianBlur(wm, (0, 0), .8)
+    Image.fromarray(np.dstack([wm, wm, wm, wm])).save('site/assets/felt-eyes-mask.webp', lossless=True, method=6)
+    rows = []
+    for e in eyes:
+        fx = lambda v: round((v + M[0, 2]) / FW, 5)
+        fy = lambda v: round((v + M[1, 2]) / FH, 5)
+        rows.append('{ cx: %s, cy: %s, rx: %s, ry: %s, px: %s, py: %s, pr: %s }' % (
+            fx(e['cx']), fy(e['cy']), round(e['rx'] / FW, 5), round(e['ry'] / FH, 5), fx(e['px']), fy(e['py']), round(e['pr'] / FW, 5)))
+    with open('site/assets/felt-eyes.js', 'w', encoding='utf-8') as fh:
+        fh.write('// Written by scripts/prep_stage.py. Fractions of the 1536x1024 felt frame: eye white centre and half size, pupil rest point and radius.\n')
+        fh.write('export default { sprite: %s, eyes: [\n  %s,\n] };\n' % (round(sprite_r, 4), ',\n  '.join(rows)))
     os.makedirs('shots', exist_ok=True)
     for name, bg in (('dark', (14, 11, 10)), ('light', (236, 240, 243))):
         comp = rgb * (a[..., None] / 255.0) + np.array(bg) * (1 - a[..., None] / 255.0)
@@ -163,6 +262,8 @@ def main():
         canon = cv2.warpAffine(src, similarity(el, er), (W, H), flags=cv2.INTER_AREA, borderValue=(0, 0, 0))
         valid = cv2.warpAffine(np.full(src.shape[:2], 255, np.uint8), similarity(el, er), (W, H), flags=cv2.INTER_NEAREST)
         hard = matte_grabcut(canon, valid)
+        if name == 'lego':
+            hard = refine_lego(canon, hard)
 
         big = (OUT_W, int(H * S))
         img = cv2.warpAffine(src, similarity(el, er, S), big, flags=cv2.INTER_CUBIC, borderValue=(0, 0, 0))[:OUT_H]

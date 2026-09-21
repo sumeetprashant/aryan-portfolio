@@ -88,11 +88,14 @@ h1, h2, h3, .lede, .brand-name, .label, .nav-links, .theme-toggle, .rail a, .scr
 .stage-note[data-kind="ascii"] { font: 700 .95rem/1.2 var(--mono); }
 
 /* the summary's felt character: a still until the head-turn clip exists (js/felt.js) */
-.felt { position: fixed; left: 50%; bottom: 0; z-index: 0; height: 80vh; aspect-ratio: 3 / 2; pointer-events: none; opacity: 0; visibility: hidden; transform: translateX(-50%); will-change: transform, opacity; }
+.felt { position: fixed; left: 50%; bottom: -5vh; z-index: 0; height: 80vh; aspect-ratio: 3 / 2; pointer-events: none; opacity: 0; visibility: hidden; transform: translateX(-50%); transform-origin: 50% 100%; will-change: transform, opacity; }
 .felt img, .felt video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .felt video { display: none; -webkit-mask-image: radial-gradient(60% 75% at 50% 55%, #000 62%, transparent); mask-image: radial-gradient(60% 75% at 50% 55%, #000 62%, transparent); }
 .felt.has-clip video { display: block; }
-.felt.has-clip img { display: none; }
+.felt.has-clip img, .felt.has-clip .felt-eyes { display: none; }
+/* his pupils are their own layer (scripts/prep_stage.py), held inside the eye whites by a mask and moved by js/felt.js */
+.felt-eyes { position: absolute; inset: 0; -webkit-mask: url("../assets/felt-eyes-mask.webp") center / 100% 100% no-repeat; mask: url("../assets/felt-eyes-mask.webp") center / 100% 100% no-repeat; }
+.felt-eyes i { position: absolute; left: 0; top: 0; background: url("../assets/felt-pupil.webp") center / contain no-repeat; will-change: transform; }
 @keyframes blink { 50% { opacity: 0; } }
 
 .site-header {
@@ -255,8 +258,10 @@ h3 { font-size: 1.45rem; line-height: 1.15; letter-spacing: -.03em; }
 /* the watch swings its strap well outside its box when it turns or tumbles, so it draws on a larger sheet centred on the button */
 .thing[data-key="watch"] canvas { position: absolute; left: -40%; top: -40%; width: 180%; height: 180%; pointer-events: none; }
 .thing[data-home="true"] { pointer-events: none; }
-.thing .thing-name { position: absolute; left: 50%; top: 100%; margin-top: 6px; transform: translate(-50%, 4px); font-size: .9rem; line-height: 1; white-space: nowrap; color: var(--ink); opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; }
-.thing.is-table:hover .thing-name, .thing.is-table:focus-visible .thing-name { opacity: 1; transform: translate(-50%, 0); }
+/* its name stands under it on the table, at one size whatever the thing's scale (--s is set in things.js) */
+.thing .thing-name { position: absolute; left: 50%; top: 100%; margin-top: calc(8px / var(--s, 1)); transform: translate(-50%, 4px); font-size: calc(.95rem / var(--s, 1)); line-height: 1.2; white-space: nowrap; color: var(--soft); opacity: 0; transition: opacity .3s, transform .3s, color .2s; pointer-events: none; }
+.thing.is-table .thing-name { opacity: 1; transform: translate(-50%, 0); }
+.thing.is-table:hover .thing-name, .thing.is-table:focus-visible .thing-name { color: var(--ink); box-shadow: 0 calc(2px / var(--s, 1)) 0 var(--accent); }
 .thing.is-table { cursor: pointer; }
 .thing.is-drag { cursor: grab; touch-action: none; }
 .thing.is-drag:active { cursor: grabbing; }
@@ -270,8 +275,8 @@ h3 { font-size: 1.45rem; line-height: 1.15; letter-spacing: -.03em; }
 .summary-head { position: absolute; left: clamp(22px, 6vw, 96px); top: 24vh; width: min(23rem, 25vw); }
 .js .summary-head > * { opacity: 0; transform: translateY(18px); transition: opacity .8s ease, transform .8s cubic-bezier(.2, .7, .2, 1); }
 .js .summary-head > .is-seen { opacity: 1; transform: none; }
-/* the top padding is the beat in which he and the things step back; the words only enter once they are gone */
-.summary-copy { width: min(1040px, 88vw); margin: 0 auto; padding: 24vh 0 30vh; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem 4.5rem; align-items: start; }
+/* the top padding is the beat in which he breaks into points and the things step back; the words only enter once he is gone */
+.summary-copy { width: min(1040px, 88vw); margin: 0 auto; padding: 13vh 0 30vh; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem 4.5rem; align-items: start; }
 /* nothing is behind this copy: the character and the things have left before it arrives (journey.js, things.js) */
 .summary-copy::before { content: none; }
 .summary-copy .asset { margin-top: 0; padding-top: 0; border-top: 0; }
@@ -326,7 +331,7 @@ h3 { font-size: 1.45rem; line-height: 1.15; letter-spacing: -.03em; }
   .with-object .object-slot { margin: 0 auto; }
   .signed { grid-template-columns: 1fr; }
   .table-scene { position: relative; z-index: 1; background: var(--bg); margin: 0 -22px; padding-inline: 22px !important; display: grid; grid-template-columns: repeat(2, 1fr); gap: 26px 14px; align-items: center; justify-items: center; padding: 2.4rem 0 1rem; }
-  .table-seat { display: block; width: min(100%, 104px); }
+  .table-seat { display: block; width: min(100%, 150px); }
   .table-scene::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 90px; background: linear-gradient(var(--bg), transparent); pointer-events: none; }
   .felt { bottom: auto; top: 9vh; height: 52vh; -webkit-mask-image: linear-gradient(#000 68%, transparent 98%); mask-image: linear-gradient(#000 68%, transparent 98%); }
   .summary-head { top: auto; bottom: 5vh; left: 22px; right: 22px; width: auto; }

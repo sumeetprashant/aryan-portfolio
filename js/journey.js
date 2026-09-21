@@ -13,7 +13,8 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const isSmall = () => innerWidth <= 820;
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const lerp = (a, b, t) => a + (b - a) * t;
-const summaryCopy = document.querySelector('.summary-copy');
+const summaryCopy = document.querySelector('.summary-copy'), summaryHead = document.querySelector('.summary-head'), feltEl = document.getElementById('felt');
+const onScreen = (r) => r.bottom > 0 && r.top < innerHeight;
 // value at p along a list of [p, value] stops, eased between them
 const along = (p, stops) => {
   if (p <= stops[0][0]) return stops[0][1];
@@ -30,8 +31,10 @@ for (const c of chapters) {
   rail.append(a);
 }
 
-let marks = [];
+let marks = [], copyPad = 0, copyPadEnd = 0;
 function measure() {
+  copyPad = parseFloat(getComputedStyle(summaryCopy).paddingTop) || 0;   // the beat before the summary's first words
+  copyPadEnd = parseFloat(getComputedStyle(summaryCopy).paddingBottom) || 0;
   const max = document.documentElement.scrollHeight - innerHeight;
   marks = chapters.map((c, i) => {
     const top = c.el.offsetTop, mid = top + c.el.offsetHeight / 2;
@@ -60,35 +63,46 @@ function anchor(c) {
   return c.side === 'left' ? x : 1 - x;
 }
 
-// Chapter order is fixed by the page: 0 hero (pixels), 1 context (the pixel melt), 2 forecasting and
-// 3 MIT (characters: numbers, then symbols), 4 cubes, 5 blocks, 6 the summary, 7 the photograph, not quite finished.
-// Every change of form passes through characters. Each change owns a real stretch of scroll.
+// Chapter order is fixed by the page: 0 hero (pixels), 1 context (the wax melt), 2 forecasting and
+// 3 MIT (characters: numbers, then symbols), 4 cubes, 5 bricks, 6 the summary, 7 his face through the pixels.
+// Between versions the cells break into points and re-gather. Each change owns a real stretch of scroll.
 function apply(view, real) {
   // on a phone the copy slides up over him, so every change has to finish while he is still in the clear
   const whole = Math.min(chapters.length - 2, Math.floor(real));
   const p = isSmall() ? whole + Math.min(1, Math.max(0, (real - whole - 0.04) / 0.6)) : real;
   const s = (a, b) => smooth(a, b, p);
-  view.melt = 0.06 + 0.94 * s(0.2, 0.95) + 0.4 * s(1.08, 1.45);
-  view.puddle = s(0.25, 0.95) * (1 - s(1.3, 1.65));
-  view.drain = s(1.1, 1.45);
-  view.liquid = 1 - s(1.5, 1.75);
-  view.disperse = 1 - s(1.1, 1.4);
-  view.glyph = s(1.25, 1.95);
+  view.melt = 0.3 + 0.7 * s(0.15, 0.95) + 0.5 * s(1.0, 1.5);
+  view.liquid = 1 - s(1.3, 1.72);
+  view.free = s(1.12, 1.5);
+  view.gather = s(1.3, 1.75);
+  view.snap = s(1.55, 1.9);
+  view.glyph = s(1.62, 1.97);
   view.ramp = s(2.4, 2.95);
   view.solid = s(3.3, 3.95);
-  view.flip = s(4.2, 4.92);
-  view.big = s(4.25, 4.6);
-  view.leave = s(5.3, 5.8);
+  view.stud = s(4.2, 4.55);
+  view.big = s(4.25, 4.6) * (1 - s(5.3, 5.45));
+  view.build = s(4.5, 4.97);
+  view.scatter = s(5.28, 5.8);
   // he comes back only once the summary's copy has left the window, so nothing ever crosses the words
-  const copyEnd = isSmall() ? 0 : (summaryCopy.getBoundingClientRect().bottom - innerHeight * 0.3) / innerHeight;
-  view.return = s(6.3, 6.9) * smooth(0.55, 0.2, copyEnd);
+  const copyBox = summaryCopy.getBoundingClientRect(), headBox = summaryHead.getBoundingClientRect();
+  const copyEnd = isSmall() ? 0 : (copyBox.bottom - innerHeight * 0.3) / innerHeight;
+  const home = smooth(0.55, 0.2, copyEnd);
+  view.regather = s(6.32, 6.92) * home;
+  view.end = s(6.72, 6.98) * home;
+  view.disperse = Math.max(1 - s(1.1, 1.4), view.end);
   view.photo = p > 6 ? 1 : 0;
-  note.classList.toggle('is-under', !isSmall() && copyEnd > 0.02 && summaryCopy.getBoundingClientRect().top < innerHeight * -0.06);   // the copy is passing under the head line
-  // the summary's character steps back as its copy comes up, and is gone before the words reach him
-  const copyTop = isSmall() ? 1 : summaryCopy.getBoundingClientRect().top / innerHeight;
-  view.felt = s(5.55, 5.85) * (1 - s(6.25, 6.5)) * smooth(0.8, 0.97, copyTop);
-  view.floaters = Math.max(1 - s(1.1, 1.4), s(3.7, 3.95)) * (1 - s(5.25, 5.45));
-  view.glow = along(p, [[1.2, 1], [1.9, 2.2], [3.3, 2.2], [3.9, 1], [5.4, 1], [5.8, 0.4], [6.4, 0.4], [6.9, 1]]);
+  note.classList.toggle('is-under', !isSmall() && copyEnd > 0.02 && copyBox.top < innerHeight * -0.06);   // the copy is passing under the head line
+  // the summary's character steps back as the first words come up: he breaks into points that stay in the room
+  // around the copy, and he is gone before the words reach him
+  const words = isSmall() ? 2 : (copyBox.top + copyPad) / innerHeight;
+  const here = smooth(1.02, 1.13, words);
+  view.felt = s(5.55, 5.85) * (1 - s(6.25, 6.5)) * here;
+  view.dust = s(5.7, 5.9) * (1 - here);
+  const wordsBox = { left: copyBox.left, right: copyBox.right, top: copyBox.top + copyPad, bottom: copyBox.bottom - copyPadEnd };
+  stage.keepOut(onScreen(wordsBox) ? wordsBox : null, onScreen(headBox) ? headBox : null, note.getBoundingClientRect());
+  stage.feltBox(feltEl.getBoundingClientRect());
+  view.floaters = Math.max(1 - s(1.1, 1.4), s(3.7, 3.95)) * (1 - s(5.25, 5.45)) + view.end;
+  view.glow = along(p, [[1.5, 1], [1.95, 2.2], [3.3, 2.2], [3.9, 1], [5.4, 1], [5.8, 0.4], [6.4, 0.4], [6.9, 1]]);
   view.bust = along(p, [[1.3, 0.8], [1.9, 0.68], [4.2, 0.68], [4.7, 0.655], [6.3, 0.655], [6.4, 0.765]]);
 
   const i = whole, f = real - i;
@@ -122,8 +136,8 @@ if (stage) {
     eased = reduced.matches ? target : eased + (target - eased) * 0.14;
     apply(stage.view, eased);
     window.__journey?.override?.(stage.view);   // lets shots/ hold a state still
-    felt?.update(stage.view.felt);
     things?.update(eased);
+    felt?.update(stage.view.felt, things?.focus());
     requestAnimationFrame(tick);
   };
   tick();
