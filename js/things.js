@@ -16,6 +16,8 @@ const DEFS = [
   { key: 'drone', name: 'The drone rig', story: 'capstone', chapter: 'engineering', w: 250, h: 250, table: { dx: 1.14, dy: 0.27, z: 0.75, s: 1.2 }, dock: { dx: 1.38, dy: -0.12 } },
   { key: 'watch', name: 'The Kiwi watch', story: 'kiwi', chapter: 'kiwi', w: 128, h: 160, table: { dx: 0.5, dy: 0.96, z: 0.9, s: 1.5 }, dock: { dx: 1.86, dy: 0.22 } },
 ];
+// where each stands in the row beside him (x: from the centre line, in his seated widths) and its turn to come down (n)
+const LINE = { globe: { x: -1.5, n: 1 }, packets: { x: -2.75, n: 3 }, watch: { x: 1.4, n: 0 }, drone: { x: 2.55, n: 2 } };
 const DOCK_SIZE = 0.5;   // their size above the copy, against their size on the table
 const REACH = 130;       // how near the pointer has to come, at 1440 by 900, for him and the thing to notice
 const RES = 2;   // the canvases are drawn at twice their box, so they stay sharp at table size
@@ -256,6 +258,14 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
           const sz = t.table.s * k2 * lerp(1, DOCK_SIZE, dock), drift = 1 - 0.6 * dock, e = dock * dock * (3 - 2 * dock), m = summary.at;
           const half = t.w * sz / 2 + 28, tx = m.x + lerp(t.table.dx, t.dock.dx, e) * m.h;
           b = { x: Math.max(half, Math.min(innerWidth - half, tx)) - mx * 26 * t.table.z * drift, y: m.y + lerp(t.table.dy, t.dock.dy, e) * m.h - my * 16 * t.table.z * drift + bob * drift, s: sz };
+          // as he walks down they come down after him, one by one, and line up beside him on the same line of letters he sits on:
+          // the things he signed for, in a row with him
+          const row = summary.row, f = row ? smooth(LINE[t.key].n * 0.16, LINE[t.key].n * 0.16 + 0.5, row.p) : 0;
+          t.lined = f > 0.9;
+          if (f > 0) {
+            const s2 = sz * 0.78, arc = Math.sin(f * Math.PI) * 40;
+            b = { x: lerp(b.x, innerWidth / 2 + LINE[t.key].x * row.u, f), y: lerp(b.y, row.y - t.h * s2 / 2 - 2, f) - arc, s: lerp(sz, s2, f) };
+          }
         } else b = fit(t.seat.getBoundingClientRect(), t);
       }
       // as he leaves they fade where they stand and are back in the box afterwards: flying home would take them across the words
@@ -277,6 +287,7 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
       t.el.style.visibility = opacity < 0.01 ? 'hidden' : 'visible';
       t.el.style.pointerEvents = t.mode === 'flight' ? 'none' : 'auto';
       t.el.classList.toggle('is-table', t.mode === 'table');
+      t.el.classList.toggle('is-lined', !!t.lined && t.mode === 'table');
       t.el.classList.toggle('is-attended', attended === t && t.mode === 'table');
       t.el.classList.toggle('is-drag', t.mode === 'slot' && t.key === 'drone');
       t.el.tabIndex = t.mode === 'table' || (t.mode === 'slot' && t.key === 'watch') ? 0 : -1;

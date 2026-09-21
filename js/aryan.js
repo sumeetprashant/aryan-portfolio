@@ -329,7 +329,8 @@ export async function createAryan(canvas, reduced) {
       const bob = live ? Math.sin(now / 4000 * 6.2832) * 5 : 0;
       for (const l of all) draw(l, p, dpr, W, H, bob);
       const seated = phase === 'seat' || (phase === 'walk' && walk.v.currentTime > 5.8);
-      return { ...boxOf(seated ? SCENE.seated : SCENE.floating, p), open };
+      const walked = phase === 'seat' ? 1 : phase === 'walk' ? smooth(1.5, walkEnd(), walk.v.currentTime) : 0;
+      return { ...boxOf(seated ? SCENE.seated : SCENE.floating, p), open, walked };
     },
     setMotion(on) { live = on && !reduced; if (!live) stopAll(); },
     state() { return { phase, mode, swap, walk: walk ? walk.v.currentTime : 0, look: lookT, open, awake, ready: Object.fromEntries(Object.entries(layers).map(([k, l]) => [k, l.v.readyState])) }; },   // read by shots/

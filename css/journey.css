@@ -260,6 +260,8 @@ h3 { font-size: 1.45rem; line-height: 1.15; letter-spacing: -.03em; }
 /* its name stands under it on the table, at one size whatever the thing's scale (--s is set in things.js) */
 .thing .thing-name { position: absolute; left: 50%; top: 100%; margin-top: calc(8px / var(--s, 1)); transform: translate(-50%, 4px); font-size: calc(.95rem / var(--s, 1)); line-height: 1.2; white-space: nowrap; color: var(--soft); opacity: 0; transition: opacity .3s, transform .3s, color .2s; pointer-events: none; }
 .thing.is-table .thing-name { opacity: 1; transform: translate(-50%, 0); }
+/* in the row beside him the names go above, so they never sit on the heading's letters */
+.thing.is-lined .thing-name { top: auto; bottom: 100%; margin: 0 0 calc(6px / var(--s, 1)); }
 /* the one he is looking at answers: its name is underlined, it lifts and brightens, and the others step back (things.js) */
 .thing.is-attended .thing-name, .thing.is-table:focus-visible .thing-name { color: var(--ink); box-shadow: 0 calc(2px / var(--s, 1)) 0 var(--accent); }
 .thing canvas { transition: filter .25s ease; }

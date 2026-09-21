@@ -231,6 +231,8 @@ if (stage) {
     if (eased > 4.4) aryan?.wake();   // his clips are only fetched once the summary comes near
     const him = aryan?.update({ hold: summary.hold, weight: stage.view.him, scene: summary.scene, arrived: summary.arrived, leave: summary.leave, focus: things?.focus() ?? null, small: isSmall() }) ?? null;
     stage.glass(him, summary.leave);
+    // the row the things come down into beside him: how far he has walked, the line he sits on, and his seated width
+    summary.row = him && !isSmall() ? { p: him.walked, y: summary.scene.y + SCENE.seat * summary.scene.s, u: (SCENE.seated[2] - SCENE.seated[0]) * summary.scene.s } : null;
     const open = (him?.open ?? 0).toFixed(3);
     if (open !== seatOpen) { seatOpen = open; seatLine.style.setProperty('--seat-open', open); }
     placeNote(stage.view);
