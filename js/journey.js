@@ -58,12 +58,15 @@ function xHeightTop() {
 let measuring = 0;
 function measure() {
   noteH = note.offsetHeight;
-  copyPadEnd = parseFloat(getComputedStyle(summaryCopy).paddingBottom) || 0;
-  // the band is whatever the copy leaves free, up to a little over half the window; under a third and they cannot share it
+  // the band is whatever the copy leaves free, up to a little over half the window; under a third and they cannot share it.
+  // The copy is measured as it stands pinned: flowing, it carries a long foot (30vh) that would count against it and keep a
+  // window that has room for him (1366 by 650, 1440 by 700) flowing for good
+  document.documentElement.dataset.summary = 'pin';
   const free = innerHeight - summaryCopy.offsetHeight - 8;
   summary.pin = !isSmall() && free > innerHeight * 0.36;
   summary.band = Math.min(free, innerHeight * 0.53);
   document.documentElement.dataset.summary = summary.pin ? 'pin' : 'flow';
+  copyPadEnd = parseFloat(getComputedStyle(summaryCopy).paddingBottom) || 0;
   document.documentElement.style.setProperty('--band', `${summary.band.toFixed(1)}px`);
   // his scene. On the summary's first screen the desk stands large in the upper middle, clear of the heading. Once the copy holds,
   // the line he sits on lands on the tops of the heading's small letters and his centre line on the window's, with his hair
@@ -179,6 +182,8 @@ function apply(view, real) {
   if (isSmall()) { sc.s = b.s; sc.x = b.x; sc.y = seatLine.getBoundingClientRect().top + summary.xh - SCENE.seat * b.s; }
   else { sc.s = lerp(a.s, b.s, d); sc.x = lerp(a.x, b.x, d); sc.y = lerp(a.y, b.y, d) + (summary.pin ? Math.min(0, copyBox.top - summary.band) : 0); }
   summary.arrived = summary.pin && copyBox.top <= summary.band + 2;
+  // scrolling back up: how far the copy has dropped from its hold below it (by then he must be floating again)
+  summary.back = summary.pin ? smooth(summary.band / innerHeight + 0.01, summary.band / innerHeight + 0.12, words) : 0;
   // how far the visitor is through the hold: what is left of it is how far the copy's box still is from the end of its track
   const holdH = summaryHold.offsetHeight || 1;
   summary.hold = summary.arrived ? Math.min(1, Math.max(0, 1 - (summaryRead.getBoundingClientRect().bottom - copyBox.bottom) / holdH)) : 0;
@@ -230,10 +235,10 @@ if (stage) {
     things?.update(eased, summary);
     if (eased > 4.4) aryan?.wake();   // his clips are only fetched once the summary comes near
     summary.points = !!aryan && !reduced.matches && !paused;
-    const him = aryan?.update({ things: summary.leave > 0 && !isSmall() ? things?.boxes() : null, hold: summary.hold, weight: stage.view.him, scene: summary.scene, arrived: summary.arrived, leave: summary.leave, focus: things?.focus() ?? null, small: isSmall() }) ?? null;
+    const him = aryan?.update({ things: summary.leave > 0 && !isSmall() ? things?.boxes() : null, hold: summary.hold, back: summary.back, weight: stage.view.him, scene: summary.scene, arrived: summary.arrived, leave: summary.leave, focus: things?.focus() ?? null, small: isSmall() }) ?? null;
     stage.glass(him, summary.leave);
     // the row the things come down into beside him: how far he has walked, the line he sits on, and his seated width
-    summary.row = him && !isSmall() ? { p: him.walked, y: summary.scene.y + SCENE.seat * summary.scene.s, u: (SCENE.seated[2] - SCENE.seated[0]) * summary.scene.s } : null;
+    summary.row = him && !isSmall() ? { p: him.walked, y: summary.scene.y + SCENE.seat * summary.scene.s, u: Math.max(106, (SCENE.seated[2] - SCENE.seated[0]) * summary.scene.s) } : null;   // in a short window he is small, but the things' names are not: the row keeps room for them
     const open = (him?.open ?? 0).toFixed(3);
     if (open !== seatOpen) { seatOpen = open; seatLine.style.setProperty('--seat-open', open); }
     placeNote(stage.view);

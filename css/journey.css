@@ -93,8 +93,8 @@ h1, h2, h3, .lede, .brand-name, .label, .nav-links, .theme-toggle, .rail a, .scr
 .stage-note[data-kind="ascii"] { font: 700 .95rem/1.2 var(--mono); }
 
 /* Aryan in the summary (js/aryan.js): his clips, cut out of their green screen, drawn over the page's words and
-   the header's fade, under the things */
-.aryan { position: fixed; inset: 0; z-index: 5; width: 100%; height: 100%; display: block; pointer-events: none; }
+   the header's fade (one step above the header, which comes after him in the page and would otherwise dim his hair as he stands) */
+.aryan { position: fixed; inset: 0; z-index: 6; width: 100%; height: 100%; display: block; pointer-events: none; }
 @keyframes blink { 50% { opacity: 0; } }
 
 .site-header {

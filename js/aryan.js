@@ -196,7 +196,7 @@ export async function createAryan(canvas, reduced) {
   for (const pr of [quad, dots]) { gl.useProgram(pr.p); gl.uniform1i(pr.u.uTex, 0); gl.uniform1i(pr.u.uRef, 1); }
 
   const hover = matchMedia('(hover: hover)').matches;
-  let live = !reduced, awake = false, phase = phone ? 'seat' : 'float', mode = 'work', walkDir = 1, lookT = 0, swap = 0, open = 0, last = performance.now(), shown = false;
+  let live = !reduced, awake = false, phase = phone ? 'seat' : 'float', mode = 'work', walkDir = 1, rate = 1, holdWas = 0, holdDir = 1, holdAt = 0, lookT = 0, swap = 0, open = 0, last = performance.now(), shown = false;
   const walkEnd = () => (walk.v.duration || 8) - 0.05;
 
   const thingTex = new Map();
@@ -205,24 +205,31 @@ export async function createAryan(canvas, reduced) {
   // the phase follows the page: floating until the copy has arrived under him; then his points go over to him standing (swap, 0..1),
   // he walks, and sits on its heading. Scrolling back runs all of it backwards
   function step(dt, p) {
+    // which way the visitor is scrolling through the hold. Going back up he walks back up in step with it, so he is floating again
+    // before the copy lets go; a scroll at rest counts as onward, so he never stands frozen mid-stride
+    const now = performance.now();
+    if (Math.abs(p.hold - holdWas) > 0.0015) { holdDir = p.hold < holdWas ? -1 : 1; holdAt = now; } else if (now - holdAt > 400) holdDir = 1;
+    holdWas = p.hold;
     if (p.small || phone) phase = 'seat';
-    else if (phase === 'float' && p.arrived) {
-      if (live) { phase = 'walk'; walkDir = 1; walk.v.currentTime = T0; } else { phase = 'seat'; swap = 1; }
+    else if (phase === 'float' && p.arrived && (holdDir > 0 || !live)) {
+      if (live) { phase = 'walk'; walkDir = 1; rate = 1; walk.v.currentTime = T0; } else { phase = 'seat'; swap = 1; }
     } else if (phase === 'walk') {
-      walkDir = p.arrived ? 1 : -1;
+      walkDir = p.arrived && holdDir > 0 ? 1 : -1;
       if (walkDir > 0) {
         swap = Math.min(1, swap + dt / SWAP);
         // his walk keeps pace with the scroll: the further the visitor is through the hold, the further along he must be (he hurries
         // to catch up), and if the copy moves on before he is down he is simply seated: nothing of him is ever left behind up there
-        const due = walkEnd() * smooth(0.05, 0.8, p.hold);
-        walk.v.playbackRate = walk.v.currentTime < due - 0.3 ? 3 : 1;
+        // The hurry is eased in and out in proportion to how far behind he is: switching between 1x and 3x read as an uneven walk
+        const due = walkEnd() * smooth(0.05, 0.8, p.hold), behind = due - walk.v.currentTime;
+        rate += ((behind > 0.3 ? Math.min(3, 1 + behind * 1.2) : 1) - rate) * (1 - Math.exp(-dt * 3));
+        walk.v.playbackRate = Math.round(rate * 20) / 20;
         if (p.leave > 0.01 || p.hold >= 0.98) walk.v.currentTime = walkEnd();
         if (walk.v.ended || walk.v.currentTime >= walkEnd()) { phase = 'seat'; sit.v.currentTime = 0; }
       } else if (walk.v.currentTime <= T0 + 0.04) {
         swap = Math.max(0, swap - dt / SWAP);
         if (swap <= 0) { phase = 'float'; mode = 'work'; work.v.currentTime = 0; }
       }
-    } else if (phase === 'seat' && !p.arrived) {
+    } else if (phase === 'seat' && (!p.arrived || (live && holdDir < 0 && p.hold < 0.78))) {
       if (!live) { phase = 'float'; mode = 'work'; swap = 0; }
       else { phase = 'walk'; walkDir = -1; walk.v.currentTime = walkEnd(); }
     }
@@ -269,7 +276,12 @@ export async function createAryan(canvas, reduced) {
     if (phase === 'walk' && walkDir > 0 && swap > 0.55) play(walk.v);
     else {
       if (!walk.v.paused) walk.v.pause();
-      if (phase === 'walk' && walkDir < 0) seek(walk.v, Math.max(T0, walk.v.currentTime - dt * 1.6));
+      // going back he keeps pace with the scroll: through the hold he is where he was due on the way down, and if the copy has let
+      // go (p.back, 0..1 as it drops away) he is floating again before the heading has left him: never seated or mid-stride in the air
+      if (phase === 'walk' && walkDir < 0) {
+        const t = walk.v.currentTime;
+        seek(walk.v, Math.max(T0, p.arrived ? Math.max(walkEnd() * smooth(0.05, 0.8, p.hold), t - dt * 3) : Math.min(t - dt * 1.6, walkEnd() * (1 - (p.back || 0)))));
+      }
     }
   }
 
@@ -310,7 +322,7 @@ export async function createAryan(canvas, reduced) {
   return {
     // the summary is coming: fetch his clips now
     wake() { if (awake) return; awake = true; for (const l of all) { l.v.preload = 'auto'; l.v.load(); } },
-    // p: { hold (0..1: how far the visitor has scrolled through the copy's hold), weight (0..1: the room's points gathering into him), scene ({x, y, s}: where the scene's corner stands, in CSS px, and
+    // p: { back (0..1: scrolling back up, how far the copy has dropped from its hold toward where the scene undocks), hold (0..1: how far the visitor has scrolled through the copy's hold), weight (0..1: the room's points gathering into him), scene ({x, y, s}: where the scene's corner stands, in CSS px, and
     // CSS px per unit), arrived (the copy is held under him), leave (0..1 as he breaks into points and goes), focus (the thing
     // with attention, or null), small (a phone) }. Returns the box he fills on the page and how far the heading is open for
     // his legs (open, 0..1), or null while he is away

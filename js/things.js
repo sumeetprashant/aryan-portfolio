@@ -17,7 +17,7 @@ const DEFS = [
   { key: 'watch', name: 'The Kiwi watch', story: 'kiwi', chapter: 'kiwi', w: 128, h: 160, table: { dx: 0.5, dy: 0.96, z: 0.9, s: 1.5 }, dock: { dx: 1.86, dy: 0.22 } },
 ];
 // where each stands in the row beside him (x: from the centre line, in his seated widths) and its turn to come down (n)
-const LINE = { globe: { x: -1.5, n: 1 }, packets: { x: -2.75, n: 3 }, watch: { x: 1.4, n: 0, up: 0.16 }, drone: { x: 2.55, n: 2 } };   // up: the watch's strap hangs below its box, so it stands that much higher (in its heights)
+const LINE = { globe: { x: -1.5, n: 1 }, packets: { x: -2.9, n: 3 }, watch: { x: 1.4, n: 0, up: 0.16 }, drone: { x: 2.55, n: 2 } };   // up: the watch's strap hangs below its box, so it stands that much higher (in its heights)
 const DOCK_SIZE = 0.5;   // their size above the copy, against their size on the table
 const REACH = 130;       // how near the pointer has to come, at 1440 by 900, for him and the thing to notice
 const RES = 2;   // the canvases are drawn at twice their box, so they stay sharp at table size
@@ -277,7 +277,7 @@ export async function createThings({ stage, chapters, openStory, reduced }) {
       const e = fading ? 1 : k * k * (3 - 2 * k), hop = Math.sin(e * Math.PI);
       let x = lerp(a.x, b.x, e), y = lerp(a.y, b.y, e) - hop * (boxed ? 90 : 0) - t.lift * 10, s = lerp(a.s, b.s, e) * (1 + t.lift * 0.12);
       // as he breaks into points so do they: js/aryan.js draws their points from these canvases, and the things themselves step out
-      let opacity = (1 - 0.45 * t.back) * (fading ? (summary.points && t.ctx ? (summary.leave > 0.07 ? 0 : 1) : 1 - summary.leave) : 1);   // the watch is drawn by WebGL and cannot be read back, so it fades
+      let opacity = (1 - 0.45 * t.back) * (fading ? (summary.points && t.ctx ? (summary.leave > 0.07 ? 0 : 1) : live ? (summary.points ? 1 - smooth(0.05, 0.5, summary.leave) : 1 - summary.leave) : summary.leave > 0.5 ? 0 : 1) : 1);   // the watch is drawn by WebGL and cannot be read back, so it fades; with motion off they are there or not, as he is
       if (!boxed) { x = b.x; y = b.y - t.lift * 10; s = b.s * (0.72 + 0.28 * e) * (1 + t.lift * 0.12); opacity *= e; }
       const still = (1 - 0.6 * dock) * (1 - (t.calm || 0));   // in the row beside him they stand still; hover still lifts them
       const tilt = t.mode === 'table' && roomy ? `perspective(900px) rotateX(${(-my * 9 * t.table.z * still).toFixed(2)}deg) rotateY(${(mx * 13 * t.table.z * still).toFixed(2)}deg) ` : '';
