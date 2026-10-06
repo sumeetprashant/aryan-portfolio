@@ -175,7 +175,8 @@ function createGame(button) {
   const sx = sampler.getContext('2d', { willReadFrequently: true });
 
   const seen = new Set();
-  // what is on screen now; called again as the visitor scrolls, so every section can be taken apart
+  // everything on the page, from the start, so the % is of the whole site; called again as the visitor scrolls in case the
+  // page has made something new. Whatever is scrolled away or faded out is simply not there to hit yet (refresh() marks it off)
   function collect() {
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
     for (let el = walker.nextNode(); el; el = walker.nextNode()) {
@@ -187,8 +188,8 @@ function createGame(button) {
       if (!media && !text) continue;
       if (seen.has(el)) continue;
       const r = el.getBoundingClientRect();
-      if (r.width < 4 || r.height < 4 || r.bottom < 0 || r.top > H || r.right < 0 || r.left > W) continue;
-      if (el.checkVisibility ? !el.checkVisibility({ opacityProperty: true, visibilityProperty: true }) : getComputedStyle(el).visibility !== 'visible') continue;
+      if (r.width < 4 || r.height < 4) continue;
+      if (el.checkVisibility ? !el.checkVisibility() : getComputedStyle(el).display === 'none') continue;
       const t = target(el, r, tag, text);
       seen.add(el); targets.push(t);
       if (t.gl) { t.snap = document.createElement('canvas'); t.sctx = t.snap.getContext('2d', { willReadFrequently: true }); t.snapAt = 0; snaps.set(el, t); }
@@ -212,7 +213,7 @@ function createGame(button) {
       if (!big) t.lines.push({ x: 0, y: 0, w: w0, h: Math.min(h0, 24) });
     }
     t.alive = t.total;
-    if (t.gl) t.total = t.alive = 0;   // counted from its frames
+    if (t.gl) { t.total = t.alive = 0; t.peak = 0; t.gone = 0; }   // counted from its frames; the picture changes per section, so its share is the most it ever showed, and what was cut never comes back
     return t;
   }
   function fill(t, x, y, w, h) {
@@ -246,7 +247,7 @@ function createGame(button) {
         if (Math.abs(d[j] * k - b0) + Math.abs(d[j + 1] * k - b1) + Math.abs(d[j + 2] * k - b2) <= 70) continue;
         drawnCells++; if (cut && cut[i]) cutDrawn++;
       }
-      t.total = drawnCells; t.alive = drawnCells - cutDrawn;
+      t.total = drawnCells; t.alive = drawnCells - cutDrawn; t.peak = Math.max(t.peak, drawnCells);
     }
   };
   function backdrop(t, g) {
@@ -406,7 +407,10 @@ function createGame(button) {
   let ac = null, master = null, meter = null, mute = false;
   try { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = 1; const squash = ac.createDynamicsCompressor(); squash.threshold.value = -12; squash.ratio.value = 6; master.connect(squash).connect(ac.destination); meter = ac.createAnalyser(); meter.fftSize = 1024; master.connect(meter); } catch { ac = null; }
   const wake = () => { if (ac?.state === 'suspended') ac.resume(); };
-  const setMute = (on) => { mute = on; if (master) master.gain.value = on ? 0 : 1; muteChip.classList.toggle('on', on); muteChip.lastChild.textContent = on ? ' muted' : ' sound'; };
+  const VOLS = [1, 0.5, 0.2, 0], VOL_NAMES = [' sound', ' half', ' low', ' off'];
+  let vol = 0;
+  const setVol = (i) => { vol = i % VOLS.length; mute = VOLS[vol] === 0; if (master) master.gain.setTargetAtTime(VOLS[vol], ac.currentTime, 0.02); muteChip.classList.toggle('on', vol > 0); muteChip.lastChild.textContent = VOL_NAMES[vol]; };
+  const setMute = () => setVol(vol + 1);
   const sfx = {
     tone(f0, f1, dur, vol = 0.12, type = 'square') {
       if (!ac || mute) return;
@@ -440,8 +444,8 @@ function createGame(button) {
       const b = this.bed, t = ac.currentTime, now = performance.now();
       if (now - b.at < 50) return; b.at = now;
       const flick = 0.75 + Math.random() * 0.25;
-      b.rg.gain.setTargetAtTime((mute ? 0 : level * 0.55) * flick, t, 0.08);
-      b.ag.gain.setTargetAtTime((mute ? 0 : level * 0.12) * flick, t, 0.05);
+      b.rg.gain.setTargetAtTime((mute ? 0 : level * 0.4) * flick, t, 0.08);
+      b.ag.gain.setTargetAtTime((mute ? 0 : level * 0.08) * flick, t, 0.05);
       b.rf.frequency.setTargetAtTime(380 + level * 260 + Math.random() * 120, t, 0.1);
     },
     crackle() { if (!ac || mute) return; this.noise(0.012 + Math.random() * 0.02, 0.35 + Math.random() * 0.3, 1800 + Math.random() * 3000, 'highpass'); },
@@ -490,6 +494,7 @@ function createGame(button) {
     healY = scrollY;
     for (const t of targets) {
       if (!t.gl || !t.cut) continue;
+      t.gone += t.total - t.alive;   // what was cut out of this picture stays counted
       t.cut.fill(0); t.grid.fill(1); t.dirty = false;
       t.el.style.clipPath = t.prev.clip; t.el.style.webkitClipPath = t.prev.wclip;
     }
@@ -527,7 +532,7 @@ function createGame(button) {
   chips.forEach((c) => c.addEventListener('click', () => pick(+c.dataset.w)));
   chips[0].classList.add('on');
   hud.querySelector('.dx-esc').addEventListener('click', () => stop());
-  muteChip.addEventListener('click', () => { wake(); setMute(!mute); });
+  muteChip.addEventListener('click', () => { wake(); setMute(); });
 
   function fire(now) {
     lastShot = now;
@@ -834,7 +839,10 @@ function createGame(button) {
 
   function score() {
     let all = 0, left = 0;
-    for (const t of targets) if (!t.big || t.gl) { all += t.total; left += t.alive; }
+    for (const t of targets) {
+      if (t.gl) { const n = Math.min(t.peak, t.gone + (t.total - t.alive)); all += t.peak; left += t.peak - n; }
+      else if (!t.big) { all += t.total; left += t.alive; }
+    }
     return all ? 1 - left / all : 0;
   }
   let lastScore = '';
@@ -858,7 +866,7 @@ function createGame(button) {
   listen(window, 'keydown', (e) => {
     const k = e.key.toLowerCase();
     if (k === 'escape') { e.preventDefault(); stop(); return; }
-    if (k === 'm' && !e.repeat) setMute(!mute);
+    if (k === 'm' && !e.repeat) setMute();
     wake();
     if (GAME_KEYS.has(k)) e.preventDefault();
     if (k === '1' || k === '2' || k === '3') pick(+k - 1);
@@ -883,7 +891,7 @@ function createGame(button) {
   collect();
   refresh();
   root.classList.add('dx-on');
-  window.__destroyState = () => ({ audio: ac ? ac.state : "none", mute, rms: level(), targets: targets.length, big: targets.filter((t) => t.big).map((t) => t.el.id || t.tag), plats: plats.length, him: { x: p.x | 0, y: p.y | 0, ground: p.ground }, weapon: WEAPONS[weapon].name, score: score(), bits: bits.length, heap: Math.max(...heap) | 0 });   // read by shots/
+  window.__destroyState = () => ({ audio: ac ? ac.state : "none", mute, vol: VOLS[vol], rms: level(), targets: targets.length, big: targets.filter((t) => t.big).map((t) => t.el.id || t.tag), plats: plats.length, him: { x: p.x | 0, y: p.y | 0, ground: p.ground }, weapon: WEAPONS[weapon].name, score: score(), bits: bits.length, heap: Math.max(...heap) | 0 });   // read by shots/
   raf = requestAnimationFrame(loop);
 
   // how loud the game is right now (read by the tests)
