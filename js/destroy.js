@@ -403,8 +403,8 @@ function createGame(button) {
   }
 
   // ---- sound: a few square-wave blips, made here, nothing fetched ----
-  let ac = null, master = null, mute = false;
-  try { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = 1; master.connect(ac.destination); } catch { ac = null; }
+  let ac = null, master = null, meter = null, mute = false;
+  try { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = 1; const squash = ac.createDynamicsCompressor(); squash.threshold.value = -12; squash.ratio.value = 6; master.connect(squash).connect(ac.destination); meter = ac.createAnalyser(); meter.fftSize = 1024; master.connect(meter); } catch { ac = null; }
   const wake = () => { if (ac?.state === 'suspended') ac.resume(); };
   const setMute = (on) => { mute = on; if (master) master.gain.value = on ? 0 : 1; muteChip.classList.toggle('on', on); muteChip.lastChild.textContent = on ? ' muted' : ' sound'; };
   const sfx = {
@@ -415,19 +415,60 @@ function createGame(button) {
       g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
       o.connect(g).connect(master); o.start(t0); o.stop(t0 + dur + 0.02);
     },
-    noise(dur, vol, freq) {
+    noise(dur, vol, freq, type = 'lowpass') {
       if (!ac || mute) return;
       const t0 = ac.currentTime, len = Math.ceil(ac.sampleRate * dur), buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
       for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
       const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
-      s.buffer = buf; f.type = 'lowpass'; f.frequency.value = freq; g.gain.value = vol;
+      s.buffer = buf; f.type = type; f.frequency.value = freq; g.gain.value = vol;
       s.connect(f).connect(g).connect(master); s.start(t0);
     },
-    gun() { this.tone(700, 160, 0.05, 0.1); this.noise(0.04, 0.25, 3000); },
-    flame() { if (performance.now() - (this.lf || 0) > 90) { this.lf = performance.now(); this.noise(0.12, 0.28, 900); } },
-    launch() { this.noise(0.2, 0.4, 1800); this.tone(220, 90, 0.2, 0.12, 'sawtooth'); },
+    // two seconds of white noise, looped by everything that hisses, roars or whooshes
+    hiss() {
+      if (!this.buf) { const len = ac.sampleRate * 2, buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1; this.buf = buf; }
+      const s = ac.createBufferSource(); s.buffer = this.buf; s.loop = true; return s;
+    },
+    // the fire bed: a low roar and a high hiss that swell with how much is burning, flickering a little
+    burn(level) {
+      if (!ac) return;
+      if (!this.bed) {
+        const roar = this.hiss(), rf = ac.createBiquadFilter(), rg = ac.createGain(); rf.type = 'lowpass'; rf.frequency.value = 420; rf.Q.value = 0.7; rg.gain.value = 0;
+        const air = this.hiss(), af = ac.createBiquadFilter(), ag = ac.createGain(); af.type = 'bandpass'; af.frequency.value = 2600; af.Q.value = 0.6; ag.gain.value = 0;
+        roar.connect(rf).connect(rg).connect(master); air.connect(af).connect(ag).connect(master); roar.start(); air.start();
+        this.bed = { rg, ag, rf, at: 0 };
+      }
+      const b = this.bed, t = ac.currentTime, now = performance.now();
+      if (now - b.at < 50) return; b.at = now;
+      const flick = 0.75 + Math.random() * 0.25;
+      b.rg.gain.setTargetAtTime((mute ? 0 : level * 0.55) * flick, t, 0.08);
+      b.ag.gain.setTargetAtTime((mute ? 0 : level * 0.12) * flick, t, 0.05);
+      b.rf.frequency.setTargetAtTime(380 + level * 260 + Math.random() * 120, t, 0.1);
+    },
+    crackle() { if (!ac || mute) return; this.noise(0.012 + Math.random() * 0.02, 0.35 + Math.random() * 0.3, 1800 + Math.random() * 3000, 'highpass'); },
+    // a rocket: a whoosh as it leaves, then a whine that follows it until it hits
+    rocket() {
+      if (!ac || mute) return null;
+      const t0 = ac.currentTime;
+      this.noise(0.35, 0.5, 2200, 'bandpass');
+      const w = this.hiss(), wf = ac.createBiquadFilter(), wg = ac.createGain(); wf.type = 'bandpass'; wf.Q.value = 1.2;
+      wf.frequency.setValueAtTime(900, t0); wf.frequency.exponentialRampToValueAtTime(2400, t0 + 0.4);
+      wg.gain.setValueAtTime(0.0001, t0); wg.gain.exponentialRampToValueAtTime(0.22, t0 + 0.06); wg.gain.exponentialRampToValueAtTime(0.1, t0 + 1.5);
+      const o = ac.createOscillator(), og = ac.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(140, t0); o.frequency.exponentialRampToValueAtTime(260, t0 + 1.2);
+      og.gain.setValueAtTime(0.0001, t0); og.gain.exponentialRampToValueAtTime(0.06, t0 + 0.05);
+      w.connect(wf).connect(wg).connect(master); o.connect(og).connect(master); w.start(t0); o.start(t0);
+      return { stop() { const t = ac.currentTime; wg.gain.cancelScheduledValues(t); wg.gain.setTargetAtTime(0, t, 0.03); og.gain.setTargetAtTime(0, t, 0.02); w.stop(t + 0.3); o.stop(t + 0.3); } };
+    },
+    gun() { this.tone(700, 160, 0.05, 0.16); this.noise(0.04, 0.4, 3000); },
+
     hit() { if (performance.now() - (this.lh || 0) > 45) { this.lh = performance.now(); this.noise(0.05, 0.3, 2400); } },
-    boom() { this.noise(0.5, 0.9, 700); this.tone(120, 30, 0.4, 0.25, 'triangle'); },
+    // a blast: a sub-bass thump that falls away, a crack, and a long rolling tail
+    boom() {
+      if (!ac || mute) return;
+      this.noise(0.08, 0.9, 4000, 'highpass');
+      this.noise(1.4, 1, 520);
+      this.tone(90, 24, 0.9, 0.5, 'sine');
+      this.tone(60, 20, 0.6, 0.35, 'triangle');
+    },
     crumble() { this.noise(0.25, 0.45, 1200); },
     jump() { this.tone(300, 620, 0.09, 0.08); },
     land() { this.noise(0.06, 0.25, 500); },
@@ -503,12 +544,10 @@ function createGame(button) {
         const a = aim + (Math.random() - 0.5) * 0.3, sp = 820 + Math.random() * 280;
         flames.push({ x: m.x, y: m.y, vx: Math.cos(a) * sp + p.vx * 0.5, vy: Math.sin(a) * sp, life: 0.5 + Math.random() * 0.25, t: 0, burn: 4 });
       }
-      sfx.flame();
     } else {
       const m = muzzle(aim, s);
-      rockets.push({ x: m.x, y: m.y, vx: Math.cos(aim) * 1250, vy: Math.sin(aim) * 1250, life: 2 });
+      rockets.push({ x: m.x, y: m.y, vx: Math.cos(aim) * 1250, vy: Math.sin(aim) * 1250, life: 2, snd: sfx.rocket() });
       p.flash = 0.08; p.vx -= Math.cos(aim) * 90;
-      sfx.launch();
     }
   }
   function throwNade() {
@@ -624,8 +663,8 @@ function createGame(button) {
       }
       if (Math.random() < 0.9) spark(b.x - b.vx * 0.012, b.y - b.vy * 0.012, (Math.random() - 0.5) * 80, (Math.random() - 0.5) * 80, FY, 0.2);
       if (Math.random() < 0.6) puff(b.x - b.vx * 0.02, b.y - b.vy * 0.02, 0.6);
-      if (at) { rockets.splice(i, 1); explode(b.x, b.y, 96); }
-      else if (b.life <= 0 || b.x < -40 || b.x > W + 40 || b.y < -40 || b.y > H + 40) rockets.splice(i, 1);
+      if (at) { rockets.splice(i, 1); b.snd?.stop(); explode(b.x, b.y, 96); }
+      else if (b.life <= 0 || b.x < -40 || b.x > W + 40 || b.y < -40 || b.y > H + 40) { rockets.splice(i, 1); b.snd?.stop(); }
     }
 
     for (let i = flames.length - 1; i >= 0; i--) {
@@ -707,6 +746,10 @@ function createGame(button) {
     }
 
     shake = Math.max(0, shake - dt * 40);
+
+    const torch = firing && weapon === 1, blaze = Math.min(1, fires.length / 10) * 0.7 + (torch ? 0.6 : 0) + Math.min(0.3, licks.length / 1500);
+    sfx.burn(Math.min(1, blaze));
+    if (Math.random() < dt * (fires.length * 1.4 + (torch ? 14 : 0))) sfx.crackle();
   }
 
   // ---- drawing ----
@@ -840,8 +883,11 @@ function createGame(button) {
   collect();
   refresh();
   root.classList.add('dx-on');
-  window.__destroyState = () => ({ audio: ac ? ac.state : "none", mute, targets: targets.length, big: targets.filter((t) => t.big).map((t) => t.el.id || t.tag), plats: plats.length, him: { x: p.x | 0, y: p.y | 0, ground: p.ground }, weapon: WEAPONS[weapon].name, score: score(), bits: bits.length, heap: Math.max(...heap) | 0 });   // read by shots/
+  window.__destroyState = () => ({ audio: ac ? ac.state : "none", mute, rms: level(), targets: targets.length, big: targets.filter((t) => t.big).map((t) => t.el.id || t.tag), plats: plats.length, him: { x: p.x | 0, y: p.y | 0, ground: p.ground }, weapon: WEAPONS[weapon].name, score: score(), bits: bits.length, heap: Math.max(...heap) | 0 });   // read by shots/
   raf = requestAnimationFrame(loop);
+
+  // how loud the game is right now (read by the tests)
+  const level = () => { if (!meter) return 0; const d = new Float32Array(meter.fftSize); meter.getFloatTimeDomainData(d); let q = 0; for (const v of d) q += v * v; return Math.sqrt(q / d.length); };
 
   function stop() {
     cancelAnimationFrame(raf);
