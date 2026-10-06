@@ -699,6 +699,7 @@ export async function createStage(canvas) {
       gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, FLOATERS);
     }
     gl.bindVertexArray(null);
+    window.__destroyPaint?.(canvas, { cx, cy, scale, glow: view.glow, light });   // the footer toy reads the frame it may shoot at, and the glow under it (js/destroy.js)
     requestAnimationFrame(frame);
   }
 

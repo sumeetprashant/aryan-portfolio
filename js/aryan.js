@@ -346,6 +346,7 @@ export async function createAryan(canvas, reduced) {
       const gone = live ? Math.max(1 - smooth(0.04, 0.96, p.weight), smooth(0.06, 1, p.leave)) : p.weight < 0.5 || p.leave > 0.5 ? 1 : 0;
       if (gone >= 0.999 || !awake) {
         if (shown) { gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); shown = false; stopAll(); open = 0; }
+        window.__destroyPaint?.(canvas);
         return null;
       }
       shown = true;
@@ -369,6 +370,7 @@ export async function createAryan(canvas, reduced) {
         gl.uniform1f(u.uAlpha, 1); gl.uniform1f(u.uMask, 0); gl.uniform1f(u.uPlain, 1); gl.uniform1f(u.uProg, gone);
         gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, cols * rows);
       }
+      window.__destroyPaint?.(canvas);   // the footer toy reads the frame it may shoot at (js/destroy.js)
       const seated = phase === 'seat' || (phase === 'walk' && walk.v.currentTime > 5.8);
       const walked = phase === 'seat' ? 1 : phase === 'walk' ? smooth(1.5, walkEnd(), walk.v.currentTime) : 0;
       return { ...boxOf(seated ? SCENE.seated : SCENE.floating, p), open, walked };

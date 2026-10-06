@@ -6,7 +6,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = resolve(root, '..', 'output', 'publish');
 // Explicit allowlist: never bundle .git, source data, handoff notes, or old studies.
 const files = [
-  'index.html', 'css/journey.css', 'js/journey.js', 'js/stage.js', 'js/things.js', 'js/watch.js', 'js/aryan.js',
+  'index.html', 'css/journey.css', 'js/journey.js', 'js/stage.js', 'js/things.js', 'js/watch.js', 'js/aryan.js', 'js/destroy.js',
   'vendor/three.module.min.js', 'vendor/three.core.min.js', 'vendor/THREE-LICENSE', 'vendor/addons/geometries/RoundedBoxGeometry.js', 'vendor/addons/environments/RoomEnvironment.js',
   'assets/stage/real.jpg', 'assets/relit-headshot.jpg', 'assets/Aryan-Mehta-Resume.pdf', 'assets/favicon.svg', 'assets/social-preview.png',
   // his clips in the summary (js/aryan.js); a phone only fetches sit.mp4

@@ -381,6 +381,12 @@ toggle.addEventListener('click', () => {
   aryan?.setMotion(!paused);
 });
 
+// the toy in the footer: a pixel Aryan sits on its label, and takes the page apart when pressed. Fetched once the page has
+// settled, and never where the label is hidden (phones)
+const destroyBtn = document.getElementById('destroy-btn');
+if (destroyBtn && destroyBtn.offsetParent) setTimeout(() => import('./destroy.js').then((m) => m.perch(destroyBtn)).catch((error) => console.error(error)), 1500);
+destroyBtn?.addEventListener('click', () => import('./destroy.js').then((m) => m.start(destroyBtn)).catch((error) => console.error(error)));
+
 // Aryan himself for the summary, and the things he made: shelf at the side, flying into their chapters, gathered around him there
 if (stage) {
   import('./aryan.js').then((m) => m.createAryan(document.getElementById('aryan'), reduced.matches))
