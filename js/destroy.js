@@ -5,7 +5,7 @@
 const CELL = 4;                       // the grain the page breaks at, CSS px
 const PX = 4;                         // one pixel of him while he plays, CSS px
 const PERCH_PX = 3;                   // and while he sits on the button
-const GRAV = 1900, RUN = 290, JUMP = 660, FLY = 2600, FUEL = 1.6;
+const GRAV = 2200, RUN = 340, JUMP = 740, FLY = 2800, FUEL = 1.6;
 const HW = 15;                        // half his footing, CSS px (where he can stand)
 const WALL = 8 * PX;                  // half his drawn width: he stops at the edge, never half off it
 
@@ -104,9 +104,9 @@ export function perch(button) {
 
 // ---- the weapons: 1 machine gun, 2 flamethrower, 3 rockets; right click is always a grenade ----
 const WEAPONS = [
-  { name: 'gun', every: 55 },
+  { name: 'gun', every: 40 },
   { name: 'flame', every: 16 },
-  { name: 'rocket', every: 360 },
+  { name: 'rocket', every: 280 },
 ];
 
 let game = null;
@@ -154,8 +154,8 @@ function createGame(button) {
   const hud = document.createElement('div');
   hud.className = 'dx-hud';
   // one quiet row: the three weapons, how much is gone, and the way out
-  hud.innerHTML = `${WEAPONS.map((w, i) => `<button type="button" data-w="${i}"><i>${i + 1}</i> ${w.name}</button>`).join('')}<b role="status"></b><button type="button" class="dx-esc">esc</button>`;
-  const hudScore = hud.querySelector('b'), chips = [...hud.querySelectorAll('[data-w]')];
+  hud.innerHTML = `${WEAPONS.map((w, i) => `<button type="button" data-w="${i}"><i>${i + 1}</i> ${w.name}</button>`).join('')}<b role="status"></b><button type="button" class="dx-mute"><i>m</i> sound</button><button type="button" class="dx-esc">esc</button>`;
+  const hudScore = hud.querySelector('b'), chips = [...hud.querySelectorAll('[data-w]')], muteChip = hud.querySelector('.dx-mute');
   document.body.append(canvas, hud);
 
   let W = 0, H = 0, dpr = 1, heap = new Float32Array(1);
@@ -230,17 +230,21 @@ function createGame(button) {
   window.__destroyPaint = (c, glowInfo) => {
     const t = snaps.get(c); if (!t) return;
     if (glowInfo) backdrop(t, glowInfo);
-    const now = performance.now(); if (now - t.snapAt < 90) return; t.snapAt = now;
-    const w = Math.max(1, Math.round(t.r.width / CELL)), h = Math.max(1, Math.round(t.r.height / CELL));
+    const now = performance.now(); if (now - t.snapAt < 200) return; t.snapAt = now;
+    // one snapshot pixel per grid cell, so a cell's index reads its pixel straight off
+    const w = t.cols, h = t.rows;
     if (t.snap.width !== w || t.snap.height !== h) { t.snap.width = w; t.snap.height = h; }
     t.sctx.clearRect(0, 0, w, h);
     try { t.sctx.drawImage(c, 0, 0, w, h); t.sdata = t.sctx.getImageData(0, 0, w, h).data; } catch { t.sdata = null; }
     // its share of the score follows what it shows now (his portrait changes as the page scrolls): drawn cells, and how many of them are cut
     if (t.sdata) {
+      const d = t.sdata, cut = t.cut, b0 = bg[0], b1 = bg[1], b2 = bg[2];
       let drawnCells = 0, cutDrawn = 0;
-      for (let i = 0; i < t.grid.length; i++) {
-        if (!drawn(t, t.r.left + (i % t.cols + 0.5) * CELL * t.r.width / t.w0, t.r.top + ((i / t.cols | 0) + 0.5) * CELL * t.r.height / t.h0)) continue;
-        drawnCells++; if (t.cut?.[i]) cutDrawn++;
+      for (let i = 0, j = 0; i < t.grid.length; i++, j += 4) {
+        const a = d[j + 3]; if (a < 90) continue;
+        const k = 255 / a;
+        if (Math.abs(d[j] * k - b0) + Math.abs(d[j + 1] * k - b1) + Math.abs(d[j + 2] * k - b2) <= 70) continue;
+        drawnCells++; if (cut && cut[i]) cutDrawn++;
       }
       t.total = drawnCells; t.alive = drawnCells - cutDrawn;
     }
@@ -267,10 +271,9 @@ function createGame(button) {
   }
   function snapPixel(t, x, y) {
     if (!t.sdata) return null;
-    const w = t.snap.width, h = t.snap.height;
-    const c = Math.floor((x - t.r.left) / t.r.width * w), r = Math.floor((y - t.r.top) / t.r.height * h);
-    if (c < 0 || r < 0 || c >= w || r >= h) return null;
-    const i = (r * w + c) * 4, d = t.sdata;
+    const cell = cellOf(t, x, y);
+    if (cell < 0) return null;
+    const i = cell * 4, d = t.sdata;
     return [d[i], d[i + 1], d[i + 2], d[i + 3]];
   }
   function drawn(t, x, y) {
@@ -298,9 +301,10 @@ function createGame(button) {
 
   // holes are cut with an even-odd clip path on the real element (live text, his clips, the portrait). A path changes
   // in place on the next paint, with nothing to load, so nothing blinks
-  function pushClip(t) {
+  function pushClip(t, now) {
     if (!t.dirty || t.dead) return;
-    t.dirty = false;
+    if (t.gl && now - (t.clipAt || 0) < 70) return;
+    t.dirty = false; t.clipAt = now;
     const kx = t.r.width / t.w0, ky = t.r.height / t.h0, f = (n) => Math.round(n * 10) / 10;
     let d = `M0 0H${f(t.r.width)}V${f(t.r.height)}H0Z`;
     for (let r = 0; r < t.rows; r++) {
@@ -360,11 +364,11 @@ function createGame(button) {
   // ---- bits, rubble, sparks, flames ----
   const bits = [], sparks = [], flames = [], fires = [], smoke = [], licks = [];
   // a lick: one soft tongue of flame rising off a fire or out of a blast
-  function lick(x, y, vx, vy, size, life) { if (licks.length < 2600) licks.push({ x, y, vx, vy, s: size, life, t: 0, seed: Math.random() * 10 }); }
+  function lick(x, y, vx, vy, size, life) { if (licks.length < 1400) licks.push({ x, y, vx, vy, s: size, life, t: 0, seed: Math.random() * 10 }); }
   // a fire is pinned to the thing it is burning (so it scrolls with it), eats a little of it now and then, may creep to a
   // neighbouring spot, and gives off smoke. It dies when it runs out of time or of page to burn
   function ignite(t, x, y, life = 2 + Math.random() * 2.5) {
-    if (!t || t.dead || fires.length >= 90 || !drawn(t, x, y)) return;
+    if (!t || t.dead || fires.length >= 60 || !drawn(t, x, y)) return;
     for (const f of fires) if (f.t === t && Math.abs(f.x - x) < 10 && Math.abs(f.y - y) < 10) { f.life = Math.max(f.life, f.age + life * 0.6); return; }
     fires.push({ t, lx: (x - t.r.left) * t.w0 / t.r.width, ly: (y - t.r.top) * t.h0 / t.r.height, x, y, age: 0, life, eat: 0.2 + Math.random() * 0.3, seed: Math.random() * 100, size: 0.75 + Math.random() * 0.35 });
   }
@@ -377,7 +381,7 @@ function createGame(button) {
     }
   }
   function puff(x, y, big = 1, dark = false) {
-    if (smoke.length > 480) smoke.shift();
+    if (smoke.length > 320) smoke.shift();
     smoke.push({ x: x + (Math.random() - 0.5) * 6, y, vx: (Math.random() - 0.5) * 20 + 8, vy: (dark ? -70 - Math.random() * 70 : -30 - Math.random() * 40), t: 0, life: (dark ? 2.6 : 1.8) + Math.random() * 1.6, s0: (8 + Math.random() * 6) * big, s1: (34 + Math.random() * 26) * big, dark });
   }
   function bit(x, y, vx, vy, c, burn = 0) {
@@ -399,15 +403,17 @@ function createGame(button) {
   }
 
   // ---- sound: a few square-wave blips, made here, nothing fetched ----
-  let ac = null, mute = false;
-  try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch { ac = null; }
+  let ac = null, master = null, mute = false;
+  try { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = 1; master.connect(ac.destination); } catch { ac = null; }
+  const wake = () => { if (ac?.state === 'suspended') ac.resume(); };
+  const setMute = (on) => { mute = on; if (master) master.gain.value = on ? 0 : 1; muteChip.classList.toggle('on', on); muteChip.lastChild.textContent = on ? ' muted' : ' sound'; };
   const sfx = {
-    tone(f0, f1, dur, vol = 0.04, type = 'square') {
+    tone(f0, f1, dur, vol = 0.12, type = 'square') {
       if (!ac || mute) return;
       const t0 = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
       o.type = type; o.frequency.setValueAtTime(f0, t0); o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
       g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      o.connect(g).connect(ac.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+      o.connect(g).connect(master); o.start(t0); o.stop(t0 + dur + 0.02);
     },
     noise(dur, vol, freq) {
       if (!ac || mute) return;
@@ -415,22 +421,22 @@ function createGame(button) {
       for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
       const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
       s.buffer = buf; f.type = 'lowpass'; f.frequency.value = freq; g.gain.value = vol;
-      s.connect(f).connect(g).connect(ac.destination); s.start(t0);
+      s.connect(f).connect(g).connect(master); s.start(t0);
     },
-    gun() { this.tone(700, 160, 0.05, 0.02); },
-    flame() { if (performance.now() - (this.lf || 0) > 90) { this.lf = performance.now(); this.noise(0.12, 0.07, 900); } },
-    launch() { this.noise(0.2, 0.12, 1800); this.tone(220, 90, 0.2, 0.03, 'sawtooth'); },
-    hit() { if (performance.now() - (this.lh || 0) > 45) { this.lh = performance.now(); this.noise(0.05, 0.1, 2400); } },
-    boom() { this.noise(0.5, 0.5, 700); this.tone(120, 30, 0.4, 0.08, 'triangle'); },
-    crumble() { this.noise(0.25, 0.18, 1200); },
-    jump() { this.tone(300, 620, 0.09, 0.02); },
-    land() { this.noise(0.06, 0.08, 500); },
-    pick() { this.tone(520, 780, 0.06, 0.025); },
+    gun() { this.tone(700, 160, 0.05, 0.1); this.noise(0.04, 0.25, 3000); },
+    flame() { if (performance.now() - (this.lf || 0) > 90) { this.lf = performance.now(); this.noise(0.12, 0.28, 900); } },
+    launch() { this.noise(0.2, 0.4, 1800); this.tone(220, 90, 0.2, 0.12, 'sawtooth'); },
+    hit() { if (performance.now() - (this.lh || 0) > 45) { this.lh = performance.now(); this.noise(0.05, 0.3, 2400); } },
+    boom() { this.noise(0.5, 0.9, 700); this.tone(120, 30, 0.4, 0.25, 'triangle'); },
+    crumble() { this.noise(0.25, 0.45, 1200); },
+    jump() { this.tone(300, 620, 0.09, 0.08); },
+    land() { this.noise(0.06, 0.25, 500); },
+    pick() { this.tone(520, 780, 0.06, 0.08); },
   };
 
   // ---- him: he hops down off the button he was sitting on ----
   const from = seat?.seat() ?? { x: innerWidth / 2, y: -40 };
-  seat?.hide();
+  seat?.hide(); wake();
   const p = { x: from.x, y: from.y, vx: 0, vy: -520, ground: false, plat: null, face: 1, fuel: FUEL, drop: 0, run: 0, flash: 0 };
   const keys = new Set(); let jumpEdge = false, dropEdge = false, firing = false, mx = W / 2, my = H / 2, lastShot = 0, weapon = 0;
   const bullets = [], rockets = [], nades = [], booms = [];
@@ -480,13 +486,14 @@ function createGame(button) {
   chips.forEach((c) => c.addEventListener('click', () => pick(+c.dataset.w)));
   chips[0].classList.add('on');
   hud.querySelector('.dx-esc').addEventListener('click', () => stop());
+  muteChip.addEventListener('click', () => { wake(); setMute(!mute); });
 
   function fire(now) {
     lastShot = now;
     const s = shoulder(), aim = Math.atan2(my - s.y, mx - s.x);
     if (weapon === 0) {
       const a = aim + (Math.random() - 0.5) * 0.12, m = muzzle(a, s);
-      bullets.push({ x: m.x, y: m.y, vx: Math.cos(a) * 1500, vy: Math.sin(a) * 1500, life: 1.1 });
+      bullets.push({ x: m.x, y: m.y, vx: Math.cos(a) * 2000, vy: Math.sin(a) * 2000, life: 1 });
       p.flash = 0.04; p.vx -= Math.cos(a) * 10;
       sfx.gun();
     } else if (weapon === 1) {
@@ -499,7 +506,7 @@ function createGame(button) {
       sfx.flame();
     } else {
       const m = muzzle(aim, s);
-      rockets.push({ x: m.x, y: m.y, vx: Math.cos(aim) * 950, vy: Math.sin(aim) * 950, life: 2 });
+      rockets.push({ x: m.x, y: m.y, vx: Math.cos(aim) * 1250, vy: Math.sin(aim) * 1250, life: 2 });
       p.flash = 0.08; p.vx -= Math.cos(aim) * 90;
       sfx.launch();
     }
@@ -507,7 +514,7 @@ function createGame(button) {
   function throwNade() {
     if (nades.length >= 4) return;
     const s = shoulder(), a = Math.atan2(my - s.y, mx - s.x), sp = Math.min(860, 320 + Math.hypot(mx - s.x, my - s.y) * 1.4);
-    nades.push({ x: s.x, y: s.y, vx: Math.cos(a) * sp + p.vx * 0.4, vy: Math.sin(a) * sp, fuse: 1.0 });
+    nades.push({ x: s.x, y: s.y, vx: Math.cos(a) * sp + p.vx * 0.4, vy: Math.sin(a) * sp, fuse: 0.8 });
     sfx.tone(500, 260, 0.08, 0.02);
   }
   function hitAt(x, y) {
@@ -552,12 +559,12 @@ function createGame(button) {
   function step(dt, now) {
     if (rescan && now > scanAt) { rescan = false; scanAt = now + 200; collect(); refreshAt = 0; if (Math.abs(scrollY - healY) > 24) heal(); }
     if (now > refreshAt) { refreshAt = now + 250; refresh(); }
-    for (const t of targets) pushClip(t);
+    for (const t of targets) pushClip(t, now);
 
     const left = keys.has('a') || keys.has('arrowleft'), right = keys.has('d') || keys.has('arrowright');
     const jumpHeld = keys.has(' ') || keys.has('w') || keys.has('arrowup');
     const want = (right ? 1 : 0) - (left ? 1 : 0);
-    p.vx += (want * RUN - p.vx) * Math.min(1, dt * (p.ground ? 14 : 4));
+    p.vx += (want * RUN - p.vx) * Math.min(1, dt * (p.ground ? 22 : 6));
     if (jumpEdge && p.ground) { p.vy = -JUMP; p.ground = false; p.plat = null; sfx.jump(); }
     jumpEdge = false;
     if (jumpHeld && !p.ground && p.vy > -240 && p.fuel > 0) {
@@ -671,7 +678,7 @@ function createGame(button) {
       if (f.age >= f.life || t.off) { fires.splice(i, 1); continue; }
       f.x = t.r.left + f.lx * t.r.width / t.w0; f.y = t.r.top + f.ly * t.r.height / t.h0;
       const strength = Math.min(1, f.age / 0.3) * Math.min(1, (f.life - f.age) / 0.8);
-      for (let k = 0, n = dt * 46 * strength; k < n || Math.random() < n - k; k++) lick(f.x + (Math.random() - 0.5) * 9 * f.size, f.y + (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 14, -38 - Math.random() * 46, (7 + Math.random() * 7) * f.size, 0.35 + Math.random() * 0.35);
+      for (let k = 0, n = dt * 32 * strength; k < n || Math.random() < n - k; k++) lick(f.x + (Math.random() - 0.5) * 9 * f.size, f.y + (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 14, -38 - Math.random() * 46, (7 + Math.random() * 7) * f.size, 0.35 + Math.random() * 0.35);
       if (Math.random() < dt * 4 * strength) puff(f.x, f.y - 14 * f.size, 0.7);
       if (Math.random() < dt * 2.5 * strength) spark(f.x + (Math.random() - 0.5) * 8, f.y - 6, (Math.random() - 0.5) * 30, -60 - Math.random() * 80, Math.random() < 0.5 ? FY : FO, 0.6);
       if ((f.eat -= dt) <= 0 && !t.dead) {
@@ -796,7 +803,7 @@ function createGame(button) {
   }
 
   function loop(now) {
-    const dt = Math.min(1 / 30, (now - last) / 1000); last = now;
+    const dt = Math.min(1 / 20, (now - last) / 1000); last = now;
     step(dt, now); draw(); drawHud();
     raf = requestAnimationFrame(loop);
   }
@@ -808,7 +815,8 @@ function createGame(button) {
   listen(window, 'keydown', (e) => {
     const k = e.key.toLowerCase();
     if (k === 'escape') { e.preventDefault(); stop(); return; }
-    if (k === 'm') { mute = !mute; }
+    if (k === 'm' && !e.repeat) setMute(!mute);
+    wake();
     if (GAME_KEYS.has(k)) e.preventDefault();
     if (k === '1' || k === '2' || k === '3') pick(+k - 1);
     if ((k === ' ' || k === 'w' || k === 'arrowup') && !keys.has(k)) jumpEdge = true;
@@ -820,7 +828,7 @@ function createGame(button) {
   listen(window, 'pointermove', (e) => { mx = e.clientX; my = e.clientY; });
   listen(canvas, 'pointerdown', (e) => {
     mx = e.clientX; my = e.clientY;
-    if (ac?.state === 'suspended') ac.resume();
+    wake();
     if (e.button === 2) throwNade();
     else if (e.button === 0) { firing = true; if (performance.now() - lastShot > WEAPONS[weapon].every) fire(performance.now()); }
   });
@@ -832,7 +840,7 @@ function createGame(button) {
   collect();
   refresh();
   root.classList.add('dx-on');
-  window.__destroyState = () => ({ targets: targets.length, big: targets.filter((t) => t.big).map((t) => t.el.id || t.tag), plats: plats.length, him: { x: p.x | 0, y: p.y | 0, ground: p.ground }, weapon: WEAPONS[weapon].name, score: score(), bits: bits.length, heap: Math.max(...heap) | 0 });   // read by shots/
+  window.__destroyState = () => ({ audio: ac ? ac.state : "none", mute, targets: targets.length, big: targets.filter((t) => t.big).map((t) => t.el.id || t.tag), plats: plats.length, him: { x: p.x | 0, y: p.y | 0, ground: p.ground }, weapon: WEAPONS[weapon].name, score: score(), bits: bits.length, heap: Math.max(...heap) | 0 });   // read by shots/
   raf = requestAnimationFrame(loop);
 
   function stop() {
