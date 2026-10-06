@@ -483,7 +483,7 @@ function createGame(button) {
   const from = seat?.seat() ?? { x: innerWidth / 2, y: -40 };
   seat?.hide(); wake();
   const p = { x: from.x, y: from.y, vx: 0, vy: -520, ground: false, plat: null, face: 1, fuel: FUEL, drop: 0, run: 0, flash: 0 };
-  const keys = new Set(); let jumpEdge = false, dropEdge = false, firing = false, mx = W / 2, my = H / 2, lastShot = 0, weapon = 0;
+  const keys = new Set(); let jumpEdge = false, dropEdge = false, firing = false, keyFire = false, mouseFire = false, mx = W / 2, my = H / 2, lastShot = 0, weapon = 0;
   const bullets = [], rockets = [], nades = [], booms = [];
   let plats = [], rescan = false, scanAt = 0, shake = 0, last = performance.now(), refreshAt = 0, raf = 0, startedAt = last, wrecked = false;
 
@@ -859,14 +859,20 @@ function createGame(button) {
     raf = requestAnimationFrame(loop);
   }
 
-  // ---- input; the wheel still scrolls the page, so he can take every section apart ----
-  const GAME_KEYS = new Set(['a', 'd', 'w', 's', ' ', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown', '1', '2', '3']);
+  // ---- input; the wheel still scrolls the page, so he can take every section apart. The keyboard fires too: hold F (or J) to
+  // shoot at the pointer, G (or K) throws a grenade ----
+  const GAME_KEYS = new Set(['a', 'd', 'w', 's', ' ', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown', '1', '2', '3', 'f', 'j', 'g', 'k']);
+  const FIRE_KEYS = new Set(['f', 'j']), NADE_KEYS = new Set(['g', 'k']);
+  const trigger = () => { firing = keyFire || mouseFire; if (firing && performance.now() - lastShot > WEAPONS[weapon].every) fire(performance.now()); };
   const on = [];
   const listen = (el, type, fn, opt) => { el.addEventListener(type, fn, opt); on.push([el, type, fn, opt]); };
   listen(window, 'keydown', (e) => {
     const k = e.key.toLowerCase();
     if (k === 'escape') { e.preventDefault(); stop(); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (k === 'm' && !e.repeat) setMute();
+    if (FIRE_KEYS.has(k) && !e.repeat) { keyFire = true; wake(); trigger(); }
+    if (NADE_KEYS.has(k) && !e.repeat) { wake(); throwNade(); }
     wake();
     if (GAME_KEYS.has(k)) e.preventDefault();
     if (k === '1' || k === '2' || k === '3') pick(+k - 1);
@@ -874,16 +880,16 @@ function createGame(button) {
     if (k === 's' || k === 'arrowdown') dropEdge = true;
     keys.add(k);
   }, { capture: true });
-  listen(window, 'keyup', (e) => keys.delete(e.key.toLowerCase()), { capture: true });
-  listen(window, 'blur', () => { keys.clear(); firing = false; });
+  listen(window, 'keyup', (e) => { const k = e.key.toLowerCase(); keys.delete(k); if (FIRE_KEYS.has(k)) { keyFire = false; firing = mouseFire; } }, { capture: true });
+  listen(window, 'blur', () => { keys.clear(); firing = keyFire = mouseFire = false; });
   listen(window, 'pointermove', (e) => { mx = e.clientX; my = e.clientY; });
   listen(canvas, 'pointerdown', (e) => {
     mx = e.clientX; my = e.clientY;
     wake();
     if (e.button === 2) throwNade();
-    else if (e.button === 0) { firing = true; if (performance.now() - lastShot > WEAPONS[weapon].every) fire(performance.now()); }
+    else if (e.button === 0) { mouseFire = true; trigger(); }
   });
-  listen(window, 'pointerup', (e) => { if (e.button === 0) firing = false; });
+  listen(window, 'pointerup', (e) => { if (e.button === 0) { mouseFire = false; firing = keyFire; } });
   listen(canvas, 'contextmenu', (e) => e.preventDefault());
   listen(window, 'scroll', () => { rescan = true; refreshAt = 0; }, { passive: true });
   listen(window, 'resize', () => { resize(); refresh(); });
